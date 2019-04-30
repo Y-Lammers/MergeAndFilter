@@ -7,7 +7,7 @@
 # [min iden] [min reads] [min total reads] [min total repeats]
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.1
+# Version: 1.2.1
 
 # set arguments
 arct_name=commandArgs(trailingOnly = TRUE)[1]
@@ -44,13 +44,13 @@ if (is.na(commandArgs(trailingOnly = TRUE)[7])) {
 # the R script manually         #
 #################################
 
-#arct_name="AOHL3_4.ali.frm.uniq.tagswap.c2.cl.arctborbryo-iden.ann.sort.tsv"
-#ncbi_name="AOHL3_4.ali.frm.uniq.tagswap.c2.cl.NCBI-iden.ann.sort.tsv"
-#output_name="test"
-#min_iden=1
-#min_reads=3
-#min_total_reads=10
-#min_total_rep=3
+arct_name="AOHL3_8.ali.frm.uniq.tagswap.c2.cl.arctborbryo-iden.ann.sort.tsv"
+ncbi_name="AOHL3_8.ali.frm.uniq.tagswap.c2.cl.NCBI-iden.ann.sort.tsv"
+output_name="test"
+min_iden=1
+min_reads=3
+min_total_reads=10
+min_total_rep=3
 
 
 ###################
@@ -225,6 +225,11 @@ for (u in usample){
 	pos <- grep(u,colnames(combi))
 	lpos <- length(pos)
 
+	print(' ')
+	print(u)
+	print(pos)
+	print(lpos)
+	print(' ')
 
 	# calculate the total sum of reads for the
 	# sample across all sequences. If there is only one
@@ -238,6 +243,8 @@ for (u in usample){
 	# create four new columns for total read sum, repeat count, 
 	# proportion of repeats and weighted proportion of repeats
 	combi[[paste("totread_",u,sep="")]] <- NA
+	combi[[paste("avgread_",u,sep="")]] <- NA
+	combi[[paste("sdread_",u,sep="")]] <- NA
 	combi[[paste("totrep_",u,sep="")]] <- NA
 	combi[[paste("proprep_",u,sep="")]] <- NA
 	combi[[paste("weightrep_",u,sep="")]] <- NA
@@ -246,14 +253,32 @@ for (u in usample){
 	# loop through the sequences in order to calculate
 	# the total sum, count and proportional repeats per sequence
 	for (i in 1:nrow(combi)){
-		
+
 		# get the total sum, count and prop count
 		totsum <- sum(combi[i,pos])
+		avgread <- mean(combi[i,pos], na.rm=TRUE)
+		sdread <- sd(combi[i,pos])
 		totrep <- sum(combi[i,pos]>0)
 		proprep <- totrep/lpos
+
+		if (is.na(avgread)){
+		
+			print(i)
+			print(pos)
+			print(combi[i,pos])
+			print(avgread)
+			print(rowMeans(combi[i,pos]))
+			print(sum(combi[i,pos]))
+			print(rowSums(combi[i,]))
+			print(rowMeans(combi[i,]))
+			print(' ')
+
+		}
 		
 		# add the values to the new columns
 		combi[i,paste("totread_",u,sep="")] <- totsum
+		combi[i,paste("avgread_",u,sep="")] <- avgread
+		combi[i,paste("sdread_",u,sep="")] <- sdread
 		combi[i,paste("totrep_",u,sep="")] <- totrep
 		combi[i,paste("proprep_",u,sep="")] <- proprep
 
@@ -262,9 +287,9 @@ for (u in usample){
 	# calculate the mean number of repeats for the sample
 	# (ignoring 0 repeats) as well as the proportion of 
 	# mean repeats
-	if (sum(combi[,paste("proprep_",u,sep="")]) > 0){	
+	if (sum(combi[,paste("proprep_",u,sep="")]) > 0){
 		mean_rep <- mean(combi[combi[,paste("totrep_",u,sep="")]>0
-			,paste("totrep_",u,sep="")])
+			,paste("totrep_",u,sep="")], na.rm=TRUE)
 		rmean_rep <- mean_rep / lpos
 	} else {
 		mean_rep <- 0
@@ -305,7 +330,7 @@ for (u in usample){
 
 
 # get the positions for the summarized columns
-pos <- grep("totread_|totrep_|proprep_|weightrep_",colnames(combi))
+pos <- grep("totread_|avgread_|sdread_|totrep_|proprep_|weightrep_",colnames(combi))
 
 # get the summary subset
 summary <- combi[,pos]
@@ -319,5 +344,3 @@ finaltable <- finaltable[order(-finaltable[,"count"]),]
 # write the table
 write.table(finaltable, file=paste(output_name,"_summary.tsv",sep=""),
 	quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-
-
