@@ -7,7 +7,7 @@
 # [min iden] [min reads] [min total reads] [min total repeats]
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.2.1
+# Version: 1.2.2
 
 # set arguments
 arct_name=commandArgs(trailingOnly = TRUE)[1]
@@ -225,12 +225,6 @@ for (u in usample){
 	pos <- grep(u,colnames(combi))
 	lpos <- length(pos)
 
-	print(' ')
-	print(u)
-	print(pos)
-	print(lpos)
-	print(' ')
-
 	# calculate the total sum of reads for the
 	# sample across all sequences. If there is only one
 	# repeat, just take the sum of that column.
@@ -256,25 +250,20 @@ for (u in usample){
 
 		# get the total sum, count and prop count
 		totsum <- sum(combi[i,pos])
-		avgread <- mean(combi[i,pos], na.rm=TRUE)
-		sdread <- sd(combi[i,pos])
 		totrep <- sum(combi[i,pos]>0)
 		proprep <- totrep/lpos
 
-		if (is.na(avgread)){
-		
-			print(i)
-			print(pos)
-			print(combi[i,pos])
-			print(avgread)
-			print(rowMeans(combi[i,pos]))
-			print(sum(combi[i,pos]))
-			print(rowSums(combi[i,]))
-			print(rowMeans(combi[i,]))
-			print(' ')
-
+		# calculate the average read count and
+		# standard deviation for samples with more than
+		# one repeat
+		if (length(combi[i,pos]) == 1){
+			avgread <- combi[i,pos]
+			sdread <- 0
+		} else {
+			avgread <- rowMeans(combi[i,pos])
+			sdread <- sd(combi[i,pos])
 		}
-		
+
 		# add the values to the new columns
 		combi[i,paste("totread_",u,sep="")] <- totsum
 		combi[i,paste("avgread_",u,sep="")] <- avgread
