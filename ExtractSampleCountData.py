@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-# Contact: youri.lammers@gmail.com
-
 # This tool will go through an OBITools fasta file and extract the
 # number of sequences for each sample and output these in a table.
 
 # Usage: ExtractSampleCountData.py [input file] > [output table]
 
+# Contact: youri.lammers@gmail.com
+# version: 1.1.1 
 
 # load a bunch of modules
 import sys, json, os, itertools
@@ -57,8 +57,22 @@ def read_fasta():
 	return sampleDict
 
 
-sampleDict = read_fasta()
+def output_sample_data(sampleDict):
 
-for i in sampleDict:
-	print i
-	print sampleDict[i]
+	# This function will format and output the sample data
+
+	# print the table header
+	print "#Sample name\tRead count"
+
+	# get a list of the dictionary keys and sort it
+	samples = sampleDict.keys()
+	samples.sort() 
+
+	# Parse through the dictionary in an alphabetic order and 
+	# output the sample and read counts
+	for sample in samples:
+		print "{0}\t{1}".format(sample, sampleDict[sample])
+
+
+sampleDict = read_fasta()
+output_sample_data(sampleDict)
