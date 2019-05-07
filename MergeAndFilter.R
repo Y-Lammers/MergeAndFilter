@@ -51,15 +51,15 @@ if (is.na(commandArgs(trailingOnly = TRUE)[9])) {
 # the R script manually         #
 #################################
 
-arct_name="AOHL3_8.ali.frm.uniq.tagswap.c2.cl.arctborbryo-iden.ann.sort.tsv"
-ncbi_name="AOHL3_8.ali.frm.uniq.tagswap.c2.cl.NCBI-iden.ann.sort.tsv"
-count_table="AOHL3_8.ali.frm.uniq.counts.tsv"
-blacklist_name="MergeAndFilter/blacklist.tsv"
-output_name="test"
-min_iden=1
-min_reads=3
-min_total_reads=10
-min_total_rep=3
+#arct_name="AOHL3_8.ali.frm.uniq.tagswap.c2.cl.arctborbryo-iden.ann.sort.tsv"
+#ncbi_name="AOHL3_8.ali.frm.uniq.tagswap.c2.cl.NCBI-iden.ann.sort.tsv"
+#count_table="AOHL3_8.ali.frm.uniq.counts.tsv"
+#blacklist_name="MergeAndFilter/blacklist.tsv"
+#output_name="test"
+#min_iden=1
+#min_reads=3
+#min_total_reads=10
+#min_total_rep=3
 
 
 
@@ -122,10 +122,6 @@ counts = read.table(count_table,header=TRUE,sep="\t")
 # extract the sample names
 csample <- unique(gsub(".{1}$",'',counts[,1]))
 
-# create an empty dataframe for the sample stat information
-samplestat <- data.frame(matrix(NA,nrow=length(csample),
-	ncol=(6*(repeats+2)+2)))
-
 # get the max repeat count (median of all repeat counts)
 # median is used to avoid some deviating counts of misnamed samples
 repeats <- c()
@@ -134,6 +130,10 @@ for (sample in csample){
 	repeats <- c(repeats,rep)
 }
 repeats <- median(repeats)
+
+# create an empty dataframe for the sample stat information
+samplestat <- data.frame(matrix(NA,nrow=length(csample),
+	ncol=(6*(repeats+2)+2)))
 
 # fix the row and column names
 # add the rownames based on the sample names
@@ -149,8 +149,8 @@ for (cat in c('raw','prop_raw','prop_filt','prop_noniden',
 	tcolnames <- c(tcolnames,paste(cat,'_avg',sep=''))
 	tcolnames <- c(tcolnames,paste(cat,'_sd',sep=''))
 }
-tcolnames <- c(tcolnames,'meta_qual')
-tcolnames <- c(tcolnames,'eco_qual')
+tcolnames <- c(tcolnames,'avg_rep')
+tcolnames <- c(tcolnames,'avg_filt_rep')
 
 # add the column names
 colnames(samplestat) <- tcolnames
@@ -388,7 +388,7 @@ usamples <- unique(gsub(".{1}$",'',colnames(scombi[samples])))
 for (us in usamples){
 
 	# get the relevant columns and column count
-	pos <- grep(ucs,colnames(scombi),fixed=TRUE)
+	pos <- grep(us,colnames(scombi),fixed=TRUE)
 	lpos <- length(pos)
 
 	# Calculate the sum of reads for each repeat, as well as the proportion
@@ -468,7 +468,7 @@ for (us in usamples){
 			wproprep <- sum((scombi[seq,pos]>0)*pprop)
 
 			# add the weighted proportion to the dataframe
-			scombi[i,paste("weightrep_",us,sep="")] <- wproprep						
+			scombi[seq,paste("weightrep_",us,sep="")] <- wproprep						
 		}
 
 	} else {
@@ -485,10 +485,9 @@ for (us in usamples){
 # Write the summarized results #
 ################################
 
-
 # get the positions for the summarized columns
 pos <- grep("totread_|avgpread_|sdpread_|totrep_|proprep_|weightrep_",
-	colnames(scombi),fixed=TRUE)
+	colnames(scombi))
 
 # get the summary subset
 summary <- scombi[,pos]
@@ -654,9 +653,9 @@ for (us in usamples){
 	}
 
 	# add the average repeats to the samplestat table
-	samplestat$meta_qual[grep(cus,rownames(samplestat),
+	samplestat$avg_rep[grep(cus,rownames(samplestat),
 		fixed=TRUE)] <- ravgreps
-	samplestat$eco_qual[grep(cus,rownames(samplestat),
+	samplestat$avg_filt_rep[grep(cus,rownames(samplestat),
 		fixed=TRUE)] <- favgreps
 
 }
@@ -667,12 +666,16 @@ for (us in usamples){
 # Write the sample stat table #
 ###############################
 
-write.table(samplestat, file=paste(output_name,"_samplestat.tsv",sep=""),
-	quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+# copy the sample stat table
+samplestat_mod <- samplestat
 
+# move the column names to their own row and add them to the
+# samplestat_mod table. This is to avoid issues with the 
+# write.table function and it not correctly outputting the header.
+samplestat_mod <- rbind(colnames(samplestat_mod),samplestat_mod)
+rownames(samplestat_mod)[1] <- ''
 
-
-
-
-
+# write the table
+write.table(samplestat_mod, file=paste(output_name,"_samplestat.tsv",sep=""),
+	quote=FALSE, sep="\t", col.names=FALSE, row.names=TRUE)
 
