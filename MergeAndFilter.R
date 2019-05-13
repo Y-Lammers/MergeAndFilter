@@ -11,7 +11,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.3.1
+# Version: 1.3.2
 
 # set arguments
 arct_name=commandArgs(trailingOnly = TRUE)[1]
@@ -122,18 +122,17 @@ counts = read.table(count_table,header=TRUE,sep="\t")
 # extract the sample names
 csample <- unique(gsub(".{1}$",'',counts[,1]))
 
-# get the max repeat count (median of all repeat counts)
-# median is used to avoid some deviating counts of misnamed samples
+# get the maximum number of repeats in the library
 repeats <- c()
 for (sample in csample){
 	rep <- length(grep(sample,counts[,1],fixed=TRUE))
 	repeats <- c(repeats,rep)
 }
-repeats <- median(repeats)
+repeats <- max(repeats)
 
 # create an empty dataframe for the sample stat information
 samplestat <- data.frame(matrix(NA,nrow=length(csample),
-	ncol=(6*(repeats+2)+2)))
+	ncol=(6*(repeats+2)+3)))
 
 # fix the row and column names
 # add the rownames based on the sample names
@@ -151,6 +150,7 @@ for (cat in c('raw','prop_raw','prop_filt','prop_noniden',
 }
 tcolnames <- c(tcolnames,'avg_rep')
 tcolnames <- c(tcolnames,'avg_filt_rep')
+tcolnames <- c(tcolnames,'overlap')
 
 # add the column names
 colnames(samplestat) <- tcolnames
@@ -652,11 +652,18 @@ for (us in usamples){
 
 	}
 
-	# add the average repeats to the samplestat table
+	# calculate the overlap between the two sets
+	overlap <- length(intersect(rownames(rsubset[1:10,]),
+		rownames(fsubset[1:10,])))
+
+	# add the average number of repeats and the overlap 
+	# between them to the samplestat table
 	samplestat$avg_rep[grep(cus,rownames(samplestat),
 		fixed=TRUE)] <- ravgreps
 	samplestat$avg_filt_rep[grep(cus,rownames(samplestat),
 		fixed=TRUE)] <- favgreps
+	samplestat$overlap[grep(cus,rownames(samplestat),
+		fixed=TRUE)] <- overlap 
 
 }
 
