@@ -62,7 +62,7 @@ def output_sample_data(sampleDict):
 	# This function will format and output the sample data
 
 	# print the table header
-	print "#Sample name\tRead count"
+	print "Sample name\tRead count"
 
 	# get a list of the dictionary keys and sort it
 	samples = sampleDict.keys()
