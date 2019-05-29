@@ -11,7 +11,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.3.2
+# Version: 1.3.3
 
 # set arguments
 arct_name=commandArgs(trailingOnly = TRUE)[1]
@@ -614,33 +614,41 @@ for (us in usamples){
 #######################################
 
 # loop through the samples
-for (us in usamples){
+for (cus in usamples){
 
-	# clean the sample name so it matches the samplestat names
-	cus <- sub("sample.","",us)
-	
 	# get the relevant columns and column count
-	pos <- grep(us,colnames(rcombi),fixed=TRUE)
+	pos <- grep(cus,colnames(rcombi),fixed=TRUE)
 	lpos <- length(pos)
 
-	# create two subsets for the raw and filtered data
-	rsubset <- rcombi[,pos]
-	fsubset <- bcombi[,pos]
-	
 	# sort the subset columns based on the readcount
 	# across the rows (note: just order by count
 	# if there is only one column).
 	if (lpos == 1){
 
-		rsubset <- sort(rsubset, decreasing=TRUE)
-		fsubset <- sort(fsubset, decreasing=TRUE)
+		# create two subsets for the raw and filtered data
+		# in order to preserve the dimensions, add an
+		# additional obiclean table that will not be used
+		rsubset <- rcombi[,c(pos,(dim(rcombi)[2]-1))]
+		fsubset <- bcombi[,c(pos,(dim(bcombi)[2]-1))]
+
+		rsubset <- rsubset[order(rsubset[,1], decreasing=TRUE),]
+		fsubset <- fsubset[order(fsubset[,1], decreasing=TRUE),]
 
 		# calculate the average repeats for the
 		# top 10 most abundant sequences
-		ravgreps <- mean(rsubset[1:10]>0)
-		favgreps <- mean(fsubset[1:10]>0)
+		ravgreps <- mean(rsubset[1:10,1]>0)
+		favgreps <- mean(fsubset[1:10,1]>0)
+
+		# calculate the overlap between the two sets
+		overlap <- length(intersect(rownames(rsubset[1:10,]),
+		rownames(fsubset[1:10,])))
+
 
 	} else {
+
+		# create two subsets for the raw and filtered data
+		rsubset <- rcombi[,pos]
+		fsubset <- bcombi[,pos]
 
 		rsubset <- rsubset[order(rowSums(-rsubset)),]
 		fsubset <- fsubset[order(rowSums(-fsubset)),]
@@ -650,11 +658,16 @@ for (us in usamples){
 		ravgreps <- mean(rowSums(rsubset[1:10,]>0))
 		favgreps <- mean(rowSums(fsubset[1:10,]>0))
 
+		# calculate the overlap between the two sets
+		overlap <- length(intersect(rownames(rsubset[1:10,]),
+		rownames(fsubset[1:10,])))
+
 	}
 
-	# calculate the overlap between the two sets
-	overlap <- length(intersect(rownames(rsubset[1:10,]),
-		rownames(fsubset[1:10,])))
+	print(overlap)
+
+	# clean the sample name so it matches the samplestat names
+	cus <- sub("sample.","",cus)
 
 	# add the average number of repeats and the overlap 
 	# between them to the samplestat table
