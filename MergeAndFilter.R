@@ -1,48 +1,65 @@
 #!/usr/bin/env Rscript
 
-# R script for merging two sets of OBITools output. Applying some basic
-# filters and producing a file that summarizes the PCR repeats.
+# R script for merging two sets of OBITools output TSV files. The script appies
+# a number of basic filtering criteria and outputs three tables. One table
+# with the filtered results, a summary table for the filterd results and a 
+# table that contains the number and proportion of reads for each sample
+# in the datasets during the filtering.
 
-# USAGE: MergeAndFilter.R [arctborbryo file] [ncbi file] [count file]
-# [blacklist file] [base output name] [min iden] [min reads] 
-# [min total reads] [min total repeats]
+# USAGE: MergeAndFilter.R [obitools output 1] [obitools output 2] 
+# [count file] [synthetic blacklist file] [region blacklist file] 
+# [base output name] [obitools table 1 name] [obitools table 2 name]
+# [min iden] [min reads] [min total reads] [min total repeats]
 
-# note: The arctborbryo, ncbi, count and blacklist files and output name
+# note: The two obitools tables, count, blacklist files and output name
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.3.3
+# Version: 1.3.4
 
 # set arguments
-arct_name=commandArgs(trailingOnly = TRUE)[1]
-ncbi_name=commandArgs(trailingOnly = TRUE)[2]
+obi1file=commandArgs(trailingOnly = TRUE)[1]
+obi2file=commandArgs(trailingOnly = TRUE)[2]
 count_table=commandArgs(trailingOnly = TRUE)[3]
-blacklist_name=commandArgs(trailingOnly = TRUE)[4]
-output_name=commandArgs(trailingOnly = TRUE)[5]
+synthetic_blacklist_name=commandArgs(trailingOnly = TRUE)[4]
+region_blacklist_name=commandArgs(trailingOnly = TRUE)[5]
+output_name=commandArgs(trailingOnly = TRUE)[6]
+
+# obitools table 1 name
+if (is.na(commandArgs(trailingOnly = TRUE)[7])) {
+	obi1name="obi1"
+} else
+	obi1name=commandArgs(trailingOnly = TRUE)[7]
+
+# obitools table 2 name
+if (is.na(commandArgs(trailingOnly = TRUE)[8])) {
+	obi1name="obi2"
+} else
+	obi1name=commandArgs(trailingOnly = TRUE)[8]
 
 # minimum identity
-if (is.na(commandArgs(trailingOnly = TRUE)[6])) {
+if (is.na(commandArgs(trailingOnly = TRUE)[9])) {
 	min_iden=1
 } else
-	min_iden=as.numeric(commandArgs(trailingOnly = TRUE)[6])
+	min_iden=as.numeric(commandArgs(trailingOnly = TRUE)[9])
 
 # minimum reads
-if (is.na(commandArgs(trailingOnly = TRUE)[7])) {
+if (is.na(commandArgs(trailingOnly = TRUE)[10])) {
 	min_reads=3
 } else
-	min_reads=as.numeric(commandArgs(trailingOnly = TRUE)[7])
+	min_reads=as.numeric(commandArgs(trailingOnly = TRUE)[10])
 
 # minimum total reads
-if (is.na(commandArgs(trailingOnly = TRUE)[8])) {
+if (is.na(commandArgs(trailingOnly = TRUE)[11])) {
 	min_total_reads=10
 } else
-	min_total_reads=as.numeric(commandArgs(trailingOnly = TRUE)[8])
+	min_total_reads=as.numeric(commandArgs(trailingOnly = TRUE)[11])
 
 # minimum total repeats
-if (is.na(commandArgs(trailingOnly = TRUE)[9])) {
+if (is.na(commandArgs(trailingOnly = TRUE)[12])) {
 	min_total_rep=3
 } else
-	min_total_rep=as.numeric(commandArgs(trailingOnly = TRUE)[9])
+	min_total_rep=as.numeric(commandArgs(trailingOnly = TRUE)[12])
 
 
 
@@ -51,11 +68,14 @@ if (is.na(commandArgs(trailingOnly = TRUE)[9])) {
 # the R script manually         #
 #################################
 
-#arct_name="AOHL3_8.ali.frm.uniq.tagswap.c2.cl.arctborbryo-iden.ann.sort.tsv"
-#ncbi_name="AOHL3_8.ali.frm.uniq.tagswap.c2.cl.NCBI-iden.ann.sort.tsv"
-#count_table="AOHL3_8.ali.frm.uniq.counts.tsv"
-#blacklist_name="MergeAndFilter/blacklist.tsv"
+#obi1file="ECOGEN-ECOG-1/ECOG-1-9_tag.ali.frm.uniq.index_swap.c2.cl.arctborbryo-iden.ann.sort.tsv"
+#obi2file="ECOGEN-ECOG-1/ECOG-1-9_tag.ali.frm.uniq.index_swap.c2.cl.NCBI-iden.ann.sort.tsv"
+#count_table="ECOGEN-ECOG-1/ECOG-1-9_tag.ali.frm.uniq.counts.tsv"
+#synthetic_blacklist_name="MergeAndFilter/synthetic_blacklist.tsv"
+#region_blacklist_name="MergeAndFilter/N-Norway_blacklist.tsv"
 #output_name="test"
+#obi1name="arctborbryo"
+#obi2name="ncbi"
 #min_iden=1
 #min_reads=3
 #min_total_reads=10
@@ -67,48 +87,52 @@ if (is.na(commandArgs(trailingOnly = TRUE)[9])) {
 # Read the obitools tables #
 ############################
 
-arct = read.table(arct_name,header=TRUE,sep="\t")
-ncbi = read.table(ncbi_name,header=TRUE,sep="\t")
+obi1 = read.table(obi1file,header=TRUE,sep="\t")
+obi2 = read.table(obi2file,header=TRUE,sep="\t")
 
-# rename the arct iden specific columns
-colnames(arct)[3] <- "arct_iden"
-colnames(arct)[6:9] <- c("arct_family","arct_family_name",
-	"arct_genus","arct_genus_name")
-colnames(arct)[(dim(arct)[2]-6):(dim(arct)[2]-1)] <- c(
-	"arct_rank","arct_scientific_name","arct_species",
-	"arct_species_list","arct_species_name","arct_taxid")
+# rename the columns for the first obitools file
+colnames(obi1)[3] <- paste(obi1name,"_iden",sep="")
+colnames(obi1)[6:9] <- c(paste(obi1name,"_family",sep=""),
+	paste(obi1name,"_family_name",sep=""),
+	paste(obi1name,"_genus",sep=""),
+	paste(obi1name,"_genus_name",sep=""))
+colnames(obi1)[(dim(obi1)[2]-6):(dim(obi1)[2]-1)] <- c(
+	paste(obi1name,"_rank",sep=""),
+	paste(obi1name,"_scientific_name",sep=""),
+	paste(obi1name,"_species",sep=""),
+	paste(obi1name,"_species_list",sep=""),
+	paste(obi1name,"_species_name",sep=""),
+	paste(obi1name,"_taxid",sep=""))
 
-# rename the ncbi iden specific columns
-colnames(ncbi)[3] <- "ncbi_iden"
-colnames(ncbi)[6:9] <- c("ncbi_family","ncbi_family_name",
-	"ncbi_genus","ncbi_genus_name")
-colnames(ncbi)[(dim(ncbi)[2]-6):(dim(ncbi)[2]-1)] <- c(
-	"ncbi_rank","ncbi_scientific_name","ncbi_species",
-	"ncbi_species_list","ncbi_species_name","ncbi_taxid")
+# rename the columns for the second obitools file
+colnames(obi2)[3] <- paste(obi2name,"_iden",sep="")
+colnames(obi2)[6:9] <- c(paste(obi2name,"_family",sep=""),
+	paste(obi2name,"_family_name",sep=""),
+	paste(obi2name,"_genus",sep=""),
+	paste(obi2name,"_genus_name",sep=""))
+colnames(obi2)[(dim(obi2)[2]-6):(dim(obi2)[2]-1)] <- c(
+	paste(obi2name,"_rank",sep=""),
+	paste(obi2name,"_scientific_name",sep=""),
+	paste(obi2name,"_species",sep=""),
+	paste(obi2name,"_species_list",sep=""),
+	paste(obi2name,"_species_name",sep=""),
+	paste(obi2name,"_taxid",sep=""))
 
 # sort both datasets by the ID
-arct <- arct[order(arct$id),]
-ncbi <- ncbi[order(ncbi$id),]
+obi1 <- obi1[order(obi1$id),]
+obi2 <- obi2[order(obi2$id),]
 
-# get the arct and ncbi info columns
-arct_info <- arct[,c(1,3,5,7,9,(dim(arct)[2]-6):(dim(arct)[2]-1))]
-ncbi_info <- ncbi[,c(3,7,9,(dim(arct)[2]-6):(dim(arct)[2]-1))]
-sequences <- arct[,dim(arct)[2],drop=FALSE]
+# get the information columns
+obi1_info <- obi1[,c(1,3,5,7,9,(dim(obi1)[2]-6):(dim(obi1)[2]-1))]
+obi2_info <- obi2[,c(3,7,9,(dim(obi2)[2]-6):(dim(obi2)[2]-1))]
+sequences <- obi1[,dim(obi1)[2],drop=FALSE]
 
 # get the sample and obiclean info
-sample <- arct[,which(grepl("sample.",colnames(arct),fixed=TRUE))]
-clean <- arct[,which(grepl("obiclean_status.",colnames(arct),fixed=TRUE))]
+sample <- obi1[,which(grepl("sample.",colnames(obi1),fixed=TRUE))]
+clean <- obi1[,which(grepl("obiclean_status.",colnames(obi1),fixed=TRUE))]
 
 # combine the raw sample and obiclean data
 rcombi=cbind(sample,clean)
-
-
-
-######################
-# Read the blacklist #
-######################
-
-blacklist = read.table(blacklist_name,sep="\t")
 
 
 
@@ -125,14 +149,14 @@ csample <- unique(gsub(".{1}$",'',counts[,1]))
 # get the maximum number of repeats in the library
 repeats <- c()
 for (sample in csample){
-	rep <- length(grep(sample,counts[,1],fixed=TRUE))
+	rep <- length(grep(paste("^",sample,sep=""),counts[,1]))
 	repeats <- c(repeats,rep)
 }
 repeats <- max(repeats)
 
 # create an empty dataframe for the sample stat information
 samplestat <- data.frame(matrix(NA,nrow=length(csample),
-	ncol=(6*(repeats+2)+3)))
+	ncol=(7*(repeats+2)+3)))
 
 # fix the row and column names
 # add the rownames based on the sample names
@@ -141,7 +165,7 @@ rownames(samplestat) <- csample
 # create the column names based on the number of samples
 tcolnames <- c()
 for (cat in c('raw','prop_raw','prop_filt','prop_noniden',
-	'prop_blacklist','prop_retained')){
+	'prop_synthetic_blacklist','prop_region_blacklist','prop_retained')){
 	for (num in 1:repeats){
 		tcolnames <- c(tcolnames, paste(cat,num,sep=''))
 	}
@@ -166,10 +190,10 @@ colnames(samplestat) <- tcolnames
 for (sample in csample){
 
 	# get the rows with data
-	pos <- grep(sample,counts$Sample.name,fixed=TRUE)
+	pos <- grep(paste("^",sample,sep=""),counts$Sample.name)
 
 	# get the row for the sample in the samplestat table
-	samplepos <- grep(sample,rownames(samplestat),fixed=TRUE)
+	samplepos <- grep(paste("^",sample,sep=""),rownames(samplestat))
 
 	# get the total raw read count for the sample
 	totraw <- sum(counts$Read.count[pos])
@@ -178,33 +202,31 @@ for (sample in csample){
 	# proportions in order to calc the standard deviation
 	sampleprop <- c()	
 
-	# get the number of repeats for the sample, cap
-	# at the expected repeat count in case of a sample
-	# name mixup.
-	if (length(pos) > repeats){
-		srep <- repeats
-	} else {
-		srep <- length(pos)
-	}
-	
 	# calculate the proportion of raw reads per repeat
 	# and add it to the sample stat table, as well as
 	# the raw number itself.
-	for (rep in 1:srep){
-		
+	for (rep in pos) {
+
+		# get the repeat number so it can be stored in
+		# the proper column
+		repname <- as.character(counts$Sample.name[rep])
+		repchar <- substr(repname, nchar(repname), nchar(repname))
+
 		# calc the read proportion for the repeat
-		prep <-	counts$Read.count[pos[rep]]/totraw
+		prep <-	counts[grep(paste("^",sample,repchar,"$",sep=""),
+				counts[,1]),2]/totraw
 
 		# add the proportion to the sampleprop vector
 		sampleprop <- c(sampleprop, prep)
 
 		# add the raw repeat counts and proportional repeat
 		# counts to the sample stat table
-		samplestat[samplepos,grep(paste("raw",rep,sep=""),
-			colnames(samplestat),fixed=TRUE)] <-
-			counts$Read.count[pos[rep]]
-		samplestat[samplepos,grep(paste("prop_raw",rep,sep=""),
-			colnames(samplestat),fixed=TRUE)] <- prep
+		samplestat[samplepos,grep(paste("raw",repchar,"$",sep=""),
+			colnames(samplestat))] <-
+			counts[grep(paste("^",sample,repchar,"$",sep=""),
+				counts[,1]),2]
+		samplestat[samplepos,grep(paste("prop_raw",repchar,"$",sep=""),
+			colnames(samplestat))] <- prep
 
 	}
 
@@ -260,8 +282,8 @@ samples <- grep("sample.",colnames(tcombi),fixed=TRUE)
 for (s in 1:length(samples)){
 
 	# find the matching obiclean column
-	obiclean <- grep(sub("sample","obiclean_status",
-		colnames(tcombi)[samples[s]]), colnames(tcombi),fixed=TRUE)
+	obiclean <- grep(paste("^",sub("sample","obiclean_status",
+		colnames(tcombi)[samples[s]]),"$",sep=""), colnames(tcombi))
 
 	# for sequence in the sequence list
 	for (seq in 1:nrow(tcombi)){
@@ -282,7 +304,7 @@ for (s in 1:length(samples)){
 	
 # recalculate the total count
 for (seq in 1:nrow(tcombi)){
-	arct_info[seq,"count"] <- sum(tcombi[seq,samples])
+	obi1_info[seq,"count"] <- sum(tcombi[seq,samples])
 }
 
 
@@ -293,23 +315,23 @@ for (seq in 1:nrow(tcombi)){
 ################################################
 
 # remove the low total read count sequences
-subset = which(arct_info[,"count"]>=min_total_reads)
+subset = which(obi1_info[,"count"]>=min_total_reads)
 tcombi=tcombi[subset,]
-arct_info=arct_info[subset,]
-ncbi_info=ncbi_info[subset,]
+obi1_info=obi1_info[subset,]
+obi2_info=obi2_info[subset,]
 sequences=sequences[subset,]
 
 # count the total number of repeats
-arct_info$total_rep <- NA
+obi1_info$total_rep <- NA
 for (seq in 1:nrow(tcombi)){
-	arct_info[seq,"total_rep"] <- sum(tcombi[seq,samples]>0)
+	obi1_info[seq,"total_rep"] <- sum(tcombi[seq,samples]>0)
 }
 
 # remove the low total repeat sequences
-subset = which(arct_info[,"total_rep"]>=min_total_rep)
+subset = which(obi1_info[,"total_rep"]>=min_total_rep)
 tcombi=tcombi[subset,]
-arct_info=arct_info[subset,]
-ncbi_info=ncbi_info[subset,]
+obi1_info=obi1_info[subset,]
+obi2_info=obi2_info[subset,]
 sequences=sequences[subset,]
 
 
@@ -323,32 +345,57 @@ sequences=sequences[subset,]
 icombi <- tcombi
 
 # find the rows that match the minimum identity
-subset = which(arct_info[,"arct_iden"]>=min_iden|
-	ncbi_info[,"ncbi_iden"]>=min_iden)
+subset = which(obi1_info[,paste(obi1name,"_iden",sep="")]>=min_iden|
+	obi2_info[,paste(obi2name,"_iden",sep="")]>=min_iden)
 
 # apply the filtering to the data
 icombi=icombi[subset,]
-arct_info=arct_info[subset,]
-ncbi_info=ncbi_info[subset,]
+obi1_info=obi1_info[subset,]
+obi2_info=obi2_info[subset,]
 sequences=sequences[subset,,drop=FALSE]
 
 
 
-##################################
-# Apply  the blacklist filtering #
-##################################
+###########################################
+# Apply the synthetic blacklist filtering #
+###########################################
+
+# Read the blacklist #
+synthetic_blacklist = read.table(synthetic_blacklist_name,sep="\t")
 
 # copy the identity filtered combined sequence table
-bcombi <- icombi
+sbcombi <- icombi
 
 # find the rows that match sequences in the blacklist
 # and select the non matching rows
-subset = which(!sequences[,"sequence"] %in% blacklist[,1])
+subset = which(!sequences[,"sequence"] %in% synthetic_blacklist[,1])
 
 # apply the filtering to the data
-bcombi=bcombi[subset,]
-arct_info=arct_info[subset,]
-ncbi_info=ncbi_info[subset,]
+sbcombi=sbcombi[subset,]
+obi1_info=obi1_info[subset,]
+obi2_info=obi2_info[subset,]
+sequences=sequences[subset,,drop=FALSE]
+
+
+
+########################################
+# Apply the region blacklist filtering #
+########################################
+
+# Read the blacklist #
+region_blacklist = read.table(region_blacklist_name,sep="\t")
+
+# copy the identity filtered combined sequence table
+rbcombi <- sbcombi
+
+# find the rows that match sequences in the blacklist
+# and select the non matching rows
+subset = which(!sequences[,"sequence"] %in% region_blacklist[,1])
+
+# apply the filtering to the data
+rbcombi=rbcombi[subset,]
+obi1_info=obi1_info[subset,]
+obi2_info=obi2_info[subset,]
 sequences=sequences[subset,,drop=FALSE]
 
 
@@ -359,10 +406,10 @@ sequences=sequences[subset,,drop=FALSE]
 
 # get the samples from the final filtered combi table, i.e. remove the
 # obiclean information since this is no longer needed
-clean_sample <- bcombi[,which(grepl("sample.",colnames(bcombi),fixed=TRUE))]
+clean_sample <- rbcombi[,which(grepl("sample.",colnames(rbcombi),fixed=TRUE))]
 
 # get the final table
-finaltable=cbind(arct_info,ncbi_info,sequences,clean_sample)
+finaltable=cbind(obi1_info,obi2_info,sequences,clean_sample)
 
 # resort the final table based on the total read count
 finaltable <- finaltable[order(-finaltable[,"count"]),]
@@ -378,7 +425,7 @@ write.table(finaltable, file=paste(output_name,"_filtered.tsv",sep=""),
 ############################################
 
 # copy the final filtered table for summarization
-scombi <- bcombi
+scombi <- rbcombi
 
 # get the unique sample names (by removing the last character
 # from the sample name, which is presumed to the repeat number.)
@@ -388,7 +435,7 @@ usamples <- unique(gsub(".{1}$",'',colnames(scombi[samples])))
 for (us in usamples){
 
 	# get the relevant columns and column count
-	pos <- grep(us,colnames(scombi),fixed=TRUE)
+	pos <- grep(paste("^",us,sep=""),colnames(scombi))
 	lpos <- length(pos)
 
 	# Calculate the sum of reads for each repeat, as well as the proportion
@@ -481,6 +528,7 @@ for (us in usamples){
 }
 
 
+
 ################################
 # Write the summarized results #
 ################################
@@ -493,7 +541,7 @@ pos <- grep("totread_|avgpread_|sdpread_|totrep_|proprep_|weightrep_",
 summary <- scombi[,pos]
 
 # get the final table
-finaltable=cbind(arct_info,ncbi_info,sequences,summary)
+finaltable=cbind(obi1_info,obi2_info,sequences,summary)
 
 # re-sort the final table based on the total read count
 finaltable <- finaltable[order(-finaltable[,"count"]),]
@@ -512,68 +560,79 @@ write.table(finaltable, file=paste(output_name,"_summary.tsv",sep=""),
 # loop through the samples
 for (us in usamples){
 
-	# clean the sample name so it matches the samplestat names
-	cus <- sub("sample.","",us)
-
 	# get the row in the samplestat table
-	cusr <- grep(cus,rownames(samplestat),fixed=TRUE)
+	samplepos <- grep(sub("sample.","^",us),rownames(samplestat))
 	
 	# get the relevant columns and column count
 	pos <- grep(us,colnames(rcombi),fixed=TRUE)
-	lpos <- length(pos)	
 
 	# create empty vectors for storing the proportional data
 	# in order to calculate the mean and standard deviation
 	tfilt <- c()
 	ifilt <- c()
-	bfilt <- c()
+	sbfilt <- c()
+	rbfilt <- c()
 	retain <- c()
 
-	# get the number of repeats for the sample, cap
-	# at the expected repeat count in case of a sample
-	# name mixup.
-	if (length(pos) > repeats){
-		srep <- repeats
-	} else {
-		srep <- length(pos)
-	}
+	# calculate the proportion of raw reads per repeat
+	# and add it to the sample stat table, as well as
+	# the raw number itself.
+	for (rep in pos) {
 
-	# loop throug the repeats for a sample
-	for (rep in 1:srep){
+		# get the repeat number so it can be stored in
+		# the proper column
+		repname <- as.character(colnames(rcombi)[rep])
+		repchar <- substr(repname, nchar(repname), nchar(repname))
+		repnum <- as.numeric(repchar)
 
 		# get the raw number of reads for the repeat
-		raw <- samplestat[cusr,rep]
+		raw <- samplestat[samplepos,repnum]
+
 
 		# get the proportion of technical filtered reads
-		pt <- (raw-(sum(tcombi[,pos[rep]])))/raw
+		pt <- (raw-(sum(tcombi[,rep])))/raw
 		
 		# get the proportion of identity filtered reads
-		pi <- ((raw-(sum(icombi[,pos[rep]])))/raw)-pt
-	
-		# get the proportion of blacklist filtered reads
-		pb <- ((raw-(sum(bcombi[,pos[rep]])))/raw)-(pt+pi)
+		pi <- ((raw-(sum(icombi[,rep])))/raw)-pt
+
+		# get the proportion of synthetic blacklist filtered reads
+		psb <- ((raw-(sum(sbcombi[,rep])))/raw)-(pt+pi)
+
+		# get the proportion of region blacklist filtered reads
+		prb <- ((raw-(sum(rbcombi[,rep])))/raw)-(pt+pi+psb)
 
 		# get the proportion of retained reads
-		pr <- sum(bcombi[,pos[rep]])/raw
+		pr <- sum(rbcombi[,rep])/raw
+
 
 		# add the proprotion of technical filtered reads
 		# to the samplestat table and vector
-		samplestat[cusr,(((repeats+2)*2)+rep)] <- pt
+		samplestat[samplepos,grep(paste("prop_filt",repchar,"$",
+			sep=""),colnames(samplestat))] <- pt
 		tfilt <- c(tfilt,pt)
 
 		# add the proprotion of identity filtered reads
 		# to the samplestat table and vector
-		samplestat[cusr,(((repeats+2)*3)+rep)] <- pi
+		samplestat[samplepos,grep(paste("prop_noniden",repchar,"$",
+			sep=""),colnames(samplestat))] <- pi
 		ifilt <- c(ifilt,pi)
 
-		# add the proprotion of blacklist filtered reads
+		# add the proprotion of synthetic blacklist filtered reads
 		# to the samplestat table and vector
-		samplestat[cusr,(((repeats+2)*4)+rep)] <- pb
-		bfilt <- c(bfilt,pb)
+		samplestat[samplepos,grep(paste("prop_synthetic_blacklist",
+			repchar,"$",sep=""),colnames(samplestat))] <- psb
+		sbfilt <- c(sbfilt,psb)
+
+		# add the proprotion of region blacklist filtered reads
+		# to the samplestat table and vector
+		samplestat[samplepos,grep(paste("prop_region_blacklist",
+			repchar,"$",sep=""),colnames(samplestat))] <- prb
+		rbfilt <- c(rbfilt,prb)
 
 		# add the proprotion of retained reads to the
 		# samplestat table and vector
-		samplestat[cusr,(((repeats+2)*5)+rep)] <- pr
+		samplestat[samplepos,grep(paste("prop_retained",repchar,"$",
+			sep=""),colnames(samplestat))] <- pr
 		retain <- c(retain,pr)
 
 	}
@@ -581,28 +640,34 @@ for (us in usamples){
 	# calculate the mean and standard deviation for the
 	# proportion of technical filtered reads and add them
 	# to the samplestat table
-	samplestat[cusr,(((repeats+2)*2)+(repeats+1))] <-
-		mean(tfilt)
-	samplestat[cusr,(((repeats+2)*2)+(repeats+2))] <-
-		sd(tfilt)
+	samplestat[samplepos,grep("prop_filt_avg",colnames(samplestat),
+		fixed=TRUE)] <- mean(tfilt)
+	samplestat[samplepos,grep("prop_filt_sd",colnames(samplestat),
+		fixed=TRUE)] <- sd(tfilt)
 
 	# the same for the identity filtered reads
-	samplestat[cusr,(((repeats+2)*3)+(repeats+1))] <-
-		mean(ifilt)
-	samplestat[cusr,(((repeats+2)*3)+(repeats+2))] <-
-		sd(ifilt)
+	samplestat[samplepos,grep("prop_noniden_avg",colnames(samplestat),
+		fixed=TRUE)] <- mean(ifilt)
+	samplestat[samplepos,grep("prop_noniden_sd",colnames(samplestat),
+		fixed=TRUE)] <- sd(ifilt)
 
-	# and the blacklist filtered reads
-	samplestat[cusr,(((repeats+2)*4)+(repeats+1))] <-
-		mean(bfilt)
-	samplestat[cusr,(((repeats+2)*4)+(repeats+2))] <-
-		sd(bfilt)
+	# and the synthetic blacklist filtered reads
+	samplestat[samplepos,grep("prop_synthetic_blacklist_avg",
+		colnames(samplestat),fixed=TRUE)] <- mean(sbfilt)
+	samplestat[samplepos,grep("prop_synthetic_blacklist_sd",
+		colnames(samplestat),fixed=TRUE)] <- sd(sbfilt)
+
+	# and the region blacklist filtered reads
+	samplestat[samplepos,grep("prop_region_blacklist_avg",
+		colnames(samplestat),fixed=TRUE)] <- mean(rbfilt)
+	samplestat[samplepos,grep("prop_region_blacklist_sd",
+		colnames(samplestat),fixed=TRUE)] <- sd(rbfilt)
 
 	# and the proportion of retained reads
-	samplestat[cusr,(((repeats+2)*5)+(repeats+1))] <-
-		mean(retain)
-	samplestat[cusr,(((repeats+2)*5)+(repeats+2))] <-
-		sd(retain)
+	samplestat[samplepos,grep("prop_retained_avg",colnames(samplestat),
+		fixed=TRUE)] <- mean(retain)
+	samplestat[samplepos,grep("prop_retained_sd",colnames(samplestat),
+		fixed=TRUE)] <- sd(retain)
 
 }
 
@@ -614,10 +679,10 @@ for (us in usamples){
 #######################################
 
 # loop through the samples
-for (cus in usamples){
+for (us in usamples){
 
 	# get the relevant columns and column count
-	pos <- grep(cus,colnames(rcombi),fixed=TRUE)
+	pos <- grep(us,colnames(rcombi),fixed=TRUE)
 	lpos <- length(pos)
 
 	# sort the subset columns based on the readcount
@@ -629,7 +694,7 @@ for (cus in usamples){
 		# in order to preserve the dimensions, add an
 		# additional obiclean table that will not be used
 		rsubset <- rcombi[,c(pos,(dim(rcombi)[2]-1))]
-		fsubset <- bcombi[,c(pos,(dim(bcombi)[2]-1))]
+		fsubset <- bcombi[,c(pos,(dim(rbcombi)[2]-1))]
 
 		rsubset <- rsubset[order(rsubset[,1], decreasing=TRUE),]
 		fsubset <- fsubset[order(fsubset[,1], decreasing=TRUE),]
@@ -648,7 +713,7 @@ for (cus in usamples){
 
 		# create two subsets for the raw and filtered data
 		rsubset <- rcombi[,pos]
-		fsubset <- bcombi[,pos]
+		fsubset <- rbcombi[,pos]
 
 		rsubset <- rsubset[order(rowSums(-rsubset)),]
 		fsubset <- fsubset[order(rowSums(-fsubset)),]
@@ -664,19 +729,14 @@ for (cus in usamples){
 
 	}
 
-	print(overlap)
-
 	# clean the sample name so it matches the samplestat names
-	cus <- sub("sample.","",cus)
+	cus <- sub("sample.","^",us)
 
 	# add the average number of repeats and the overlap 
 	# between them to the samplestat table
-	samplestat$avg_rep[grep(cus,rownames(samplestat),
-		fixed=TRUE)] <- ravgreps
-	samplestat$avg_filt_rep[grep(cus,rownames(samplestat),
-		fixed=TRUE)] <- favgreps
-	samplestat$overlap[grep(cus,rownames(samplestat),
-		fixed=TRUE)] <- overlap 
+	samplestat$avg_rep[grep(cus,rownames(samplestat))] <- ravgreps
+	samplestat$avg_filt_rep[grep(cus,rownames(samplestat))] <- favgreps
+	samplestat$overlap[grep(cus,rownames(samplestat))] <- overlap 
 
 }
 
