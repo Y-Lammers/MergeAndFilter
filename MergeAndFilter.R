@@ -33,9 +33,9 @@ if (is.na(commandArgs(trailingOnly = TRUE)[7])) {
 
 # obitools table 2 name
 if (is.na(commandArgs(trailingOnly = TRUE)[8])) {
-	obi1name="obi2"
+	obi2name="obi2"
 } else
-	obi1name=commandArgs(trailingOnly = TRUE)[8]
+	obi2name=commandArgs(trailingOnly = TRUE)[8]
 
 # minimum identity
 if (is.na(commandArgs(trailingOnly = TRUE)[9])) {
@@ -68,9 +68,9 @@ if (is.na(commandArgs(trailingOnly = TRUE)[12])) {
 # the R script manually         #
 #################################
 
-#obi1file="ECOGEN-ECOG-1/ECOG-1-9_tag.ali.frm.uniq.index_swap.c2.cl.arctborbryo-iden.ann.sort.tsv"
-#obi2file="ECOGEN-ECOG-1/ECOG-1-9_tag.ali.frm.uniq.index_swap.c2.cl.NCBI-iden.ann.sort.tsv"
-#count_table="ECOGEN-ECOG-1/ECOG-1-9_tag.ali.frm.uniq.counts.tsv"
+#obi1file="ECOGEN-ECOG-1/ECOG-1-2_tag.ali.frm.uniq.index_swap.c2.cl.arctborbryo-iden.ann.sort.tsv"
+#obi2file="ECOGEN-ECOG-1/ECOG-1-2_tag.ali.frm.uniq.index_swap.c2.cl.NCBI-iden.ann.sort.tsv"
+#count_table="ECOGEN-ECOG-1/ECOG-1-2_tag.ali.frm.uniq.counts.tsv"
 #synthetic_blacklist_name="MergeAndFilter/synthetic_blacklist.tsv"
 #region_blacklist_name="MergeAndFilter/N-Norway_blacklist.tsv"
 #output_name="test"
@@ -142,6 +142,10 @@ rcombi=cbind(sample,clean)
 
 # read the raw count data
 counts = read.table(count_table,header=TRUE,sep="\t")
+
+# reformat the sample names in the counts table so that they
+# match with the OBITools input
+counts[,1] <- gsub("[:-]",".",counts[,1])
 
 # extract the sample names
 csample <- unique(gsub(".{1}$",'',counts[,1]))
@@ -557,14 +561,16 @@ write.table(finaltable, file=paste(output_name,"_summary.tsv",sep=""),
 # and retained for the filtering steps      #
 #############################################
 
-# loop through the samples
-for (us in usamples){
+# loop through the samples based on the counts table
+for (us in csample){
 
 	# get the row in the samplestat table
-	samplepos <- grep(sub("sample.","^",us),rownames(samplestat))
+	samplepos <- grep(paste("^",us,"$",sep=""),rownames(samplestat))
 	
 	# get the relevant columns and column count
-	pos <- grep(us,colnames(rcombi),fixed=TRUE)
+	#rep <- grep(us,colnames(rcombi),fixed=TRUE)
+
+	repnames <- counts[grep(paste("^",us,sep=""),counts[,1]),1]
 
 	# create empty vectors for storing the proportional data
 	# in order to calculate the mean and standard deviation
@@ -577,34 +583,55 @@ for (us in usamples){
 	# calculate the proportion of raw reads per repeat
 	# and add it to the sample stat table, as well as
 	# the raw number itself.
-	for (rep in pos) {
+	for (rep in repnames) {
 
 		# get the repeat number so it can be stored in
 		# the proper column
-		repname <- as.character(colnames(rcombi)[rep])
+		repname <- paste("sample.",rep,sep="")
 		repchar <- substr(repname, nchar(repname), nchar(repname))
 		repnum <- as.numeric(repchar)
 
-		# get the raw number of reads for the repeat
-		raw <- samplestat[samplepos,repnum]
+		# check if the repeat still exists in the OBITools
+		# output, if yes, compute the proportions, if not
+		# all data is filtered during OBITools itself and the
+		# proportions default to a 100% removed.
+		if (repname %in% colnames(rcombi)) {
 
+			# get the repeat location in the rcombi table
+			repc <- grep(repname,colnames(rcombi))
 
-		# get the proportion of technical filtered reads
-		pt <- (raw-(sum(tcombi[,rep])))/raw
-		
-		# get the proportion of identity filtered reads
-		pi <- ((raw-(sum(icombi[,rep])))/raw)-pt
+			# get the raw number of reads for the repeat
+			raw <- samplestat[samplepos,repnum]
 
-		# get the proportion of synthetic blacklist filtered reads
-		psb <- ((raw-(sum(sbcombi[,rep])))/raw)-(pt+pi)
+			# get the proportion of technical filtered reads
+			pt <- (raw-sum(tcombi[,repc]))/raw
 
-		# get the proportion of region blacklist filtered reads
-		prb <- ((raw-(sum(rbcombi[,rep])))/raw)-(pt+pi+psb)
+			# get the proportion of identity filtered reads
+			pi <- (sum(tcombi[,repc])-sum(icombi[,repc]))/raw
 
-		# get the proportion of retained reads
-		pr <- sum(rbcombi[,rep])/raw
+			# get the proportion of synthetic blacklist
+			# filtered reads
+			psb <- (sum(icombi[,repc])-sum(sbcombi[,repc]))/raw
 
+			# get the proportion of region blacklist 
+			# filtered reads
+			prb <- (sum(sbcombi[,repc])-sum(rbcombi[,repc]))/raw
 
+			# get the proportion of retained reads
+			pr <- sum(rbcombi[,repc])/raw
+
+		} else {
+
+			# set the proportions to the default when the
+			# sample is not in the OBITools output
+			pt <- 1
+			pi <- 0
+			psb <- 0
+			prb <- 0
+			pr <- 0
+
+		}
+	
 		# add the proprotion of technical filtered reads
 		# to the samplestat table and vector
 		samplestat[samplepos,grep(paste("prop_filt",repchar,"$",
@@ -694,7 +721,7 @@ for (us in usamples){
 		# in order to preserve the dimensions, add an
 		# additional obiclean table that will not be used
 		rsubset <- rcombi[,c(pos,(dim(rcombi)[2]-1))]
-		fsubset <- bcombi[,c(pos,(dim(rbcombi)[2]-1))]
+		fsubset <- rbcombi[,c(pos,(dim(rbcombi)[2]-1))]
 
 		rsubset <- rsubset[order(rsubset[,1], decreasing=TRUE),]
 		fsubset <- fsubset[order(fsubset[,1], decreasing=TRUE),]
