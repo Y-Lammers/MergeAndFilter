@@ -160,7 +160,7 @@ repeats <- max(repeats)
 
 # create an empty dataframe for the sample stat information
 samplestat <- data.frame(matrix(NA,nrow=length(csample),
-	ncol=(7*(repeats+2)+3)))
+	ncol=(7*(repeats+2)+5)))
 
 # fix the row and column names
 # add the rownames based on the sample names
@@ -177,7 +177,9 @@ for (cat in c('raw','prop_raw','prop_filt','prop_noniden',
 	tcolnames <- c(tcolnames,paste(cat,'_sd',sep=''))
 }
 tcolnames <- c(tcolnames,'avg_rep')
+tcolnames <- c(tcolnames,'sd_rep')
 tcolnames <- c(tcolnames,'avg_filt_rep')
+tcolnames <- c(tcolnames,'sd_filt_rep')
 tcolnames <- c(tcolnames,'overlap')
 
 # add the column names
@@ -729,7 +731,9 @@ for (us in usamples){
 		# calculate the average repeats for the
 		# top 10 most abundant sequences
 		ravgreps <- mean(rsubset[1:10,1]>0)
+		rsdreps <- sd(rsubset[1:10,1]>0)
 		favgreps <- mean(fsubset[1:10,1]>0)
+		fsdreps <- sd(fsubset[1:10,1]>0)
 
 		# calculate the overlap between the two sets
 		overlap <- length(intersect(rownames(rsubset[1:10,]),
@@ -747,8 +751,10 @@ for (us in usamples){
 
 		# calculate the average repeats for the
 		# top 10 most abundant sequences
-		ravgreps <- mean(rowSums(rsubset[1:10,]>0))
-		favgreps <- mean(rowSums(fsubset[1:10,]>0))
+		ravgreps <- mean(rowSums(rsubset[1:10,]>0))/lpos
+		rsdreps <- sd(rowSums(rsubset[1:10,]>0)/lpos)
+		favgreps <- mean(rowSums(fsubset[1:10,]>0))/lpos
+		fsdreps <- sd(rowSums(fsubset[1:10,]>0)/lpos)
 
 		# calculate the overlap between the two sets
 		overlap <- length(intersect(rownames(rsubset[1:10,]),
@@ -762,7 +768,9 @@ for (us in usamples){
 	# add the average number of repeats and the overlap 
 	# between them to the samplestat table
 	samplestat$avg_rep[grep(cus,rownames(samplestat))] <- ravgreps
+	samplestat$sd_rep[grep(cus,rownames(samplestat))] <- rsdreps
 	samplestat$avg_filt_rep[grep(cus,rownames(samplestat))] <- favgreps
+	samplestat$sd_filt_rep[grep(cus,rownames(samplestat))] <- fsdreps
 	samplestat$overlap[grep(cus,rownames(samplestat))] <- overlap 
 
 }
