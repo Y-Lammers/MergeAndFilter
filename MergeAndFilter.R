@@ -298,13 +298,14 @@ for (s in 1:length(samples)){
 		# threshold, set it to zero
 		if(tcombi[seq,samples[s]]<min_reads){
 			tcombi[seq,samples[s]] <- 0
-		} else
+		} else {
 			# if the read number is above the
 			# threshold, check if it is an internal
 			# sequence, if so, set it to zero
 			if(tcombi[seq,obiclean]=="i"){
 				tcombi[seq,samples[s]] <- 0
 			}
+		}
 	}
 }	
 	
@@ -367,7 +368,7 @@ sequences=sequences[subset,,drop=FALSE]
 ###########################################
 
 # Read the blacklist #
-synthetic_blacklist = read.table(synthetic_blacklist_name,sep="\t")
+synthetic_blacklist = read.table(synthetic_blacklist_name,sep="\t",fill=TRUE)
 
 # copy the identity filtered combined sequence table
 sbcombi <- icombi
@@ -389,7 +390,7 @@ sequences=sequences[subset,,drop=FALSE]
 ########################################
 
 # Read the blacklist #
-region_blacklist = read.table(region_blacklist_name,sep="\t")
+region_blacklist = read.table(region_blacklist_name,sep="\t",fill=TRUE)
 
 # copy the identity filtered combined sequence table
 rbcombi <- sbcombi
