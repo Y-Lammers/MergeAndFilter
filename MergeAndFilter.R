@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.3.4
+# Version: 1.4.1
 
 # set arguments
 obi1file=commandArgs(trailingOnly = TRUE)[1]
@@ -68,12 +68,14 @@ if (is.na(commandArgs(trailingOnly = TRUE)[12])) {
 # the R script manually         #
 #################################
 
+#obi1file="../Andoya/Metabarcoding/NewAndoya/AndoyaMerged.cl.arctborbryo-iden.ann.sort.tsv"
+#obi2file="../Andoya/Metabarcoding/NewAndoya/AndoyaMerged.cl.NCBI-iden.ann.sort.tsv"
+#count_table="../Andoya/Metabarcoding/NewAndoya/AndoyaMerged.counts.tsv"
+#output_name="../Andoya/Metabarcoding/NewAndoya/AndoyaCombined"
 #obi1file="ECOGEN-ECOG-1/ECOG-1-2_tag.ali.frm.uniq.index_swap.c2.cl.arctborbryo-iden.ann.sort.tsv"
 #obi2file="ECOGEN-ECOG-1/ECOG-1-2_tag.ali.frm.uniq.index_swap.c2.cl.NCBI-iden.ann.sort.tsv"
-#count_table="ECOGEN-ECOG-1/ECOG-1-2_tag.ali.frm.uniq.counts.tsv"
-#synthetic_blacklist_name="MergeAndFilter/synthetic_blacklist.tsv"
+#synthetic_blacklist_name="/home/youri/Projects/ECOGEN/MergeAndFilter/synthetic_blacklist.tsv"
 #region_blacklist_name="MergeAndFilter/N-Norway_blacklist.tsv"
-#output_name="test"
 #obi1name="arctborbryo"
 #obi2name="ncbi"
 #min_iden=1
@@ -160,13 +162,14 @@ repeats <- max(repeats)
 
 # create an empty dataframe for the sample stat information
 samplestat <- data.frame(matrix(NA,nrow=length(csample),
-	ncol=(7*(repeats+2)+5)))
+	ncol=(7*(repeats+2)+10)))
 
 # fix the row and column names
 # add the rownames based on the sample names
 rownames(samplestat) <- csample
 
-# create the column names based on the number of samples
+# create the column names for the repeats based on 
+# the number of samples
 tcolnames <- c()
 for (cat in c('raw','prop_raw','prop_filt','prop_noniden',
 	'prop_synthetic_blacklist','prop_region_blacklist','prop_retained')){
@@ -176,11 +179,19 @@ for (cat in c('raw','prop_raw','prop_filt','prop_noniden',
 	tcolnames <- c(tcolnames,paste(cat,'_avg',sep=''))
 	tcolnames <- c(tcolnames,paste(cat,'_sd',sep=''))
 }
+
+# add the additional columns for the various sample averages
 tcolnames <- c(tcolnames,'avg_rep')
 tcolnames <- c(tcolnames,'sd_rep')
 tcolnames <- c(tcolnames,'avg_filt_rep')
 tcolnames <- c(tcolnames,'sd_filt_rep')
 tcolnames <- c(tcolnames,'overlap')
+tcolnames <- c(tcolnames,'avg_seq_length')
+tcolnames <- c(tcolnames,'sd_seq_length')
+tcolnames <- c(tcolnames,'avg_single_seq_length')
+tcolnames <- c(tcolnames,'sd_single_seq_length')
+tcolnames <- c(tcolnames,'single_seq_count')
+
 
 # add the column names
 colnames(samplestat) <- tcolnames
@@ -569,10 +580,8 @@ for (us in csample){
 
 	# get the row in the samplestat table
 	samplepos <- grep(paste("^",us,"$",sep=""),rownames(samplestat))
-	
-	# get the relevant columns and column count
-	#rep <- grep(us,colnames(rcombi),fixed=TRUE)
 
+	# get the sample names
 	repnames <- counts[grep(paste("^",us,sep=""),counts[,1]),1]
 
 	# create empty vectors for storing the proportional data
@@ -583,10 +592,11 @@ for (us in csample){
 	rbfilt <- c()
 	retain <- c()
 
+
 	# calculate the proportion of raw reads per repeat
 	# and add it to the sample stat table, as well as
 	# the raw number itself.
-	for (rep in repnames) {
+	for (rep in repnames){
 
 		# get the repeat number so it can be stored in
 		# the proper column
@@ -667,6 +677,37 @@ for (us in csample){
 
 	}
 
+	
+	# get the relevant columns
+	pos <- grep(paste("^sample.",us,sep=""),colnames(rbcombi))
+
+	# create the vectors for the sequence length information
+	replength <- c()
+	singlelength <- c()
+
+	# loop through the sequences, and get the sequence lengths
+	# for each barcode
+	for (seq in 1:nrow(rbcombi)){
+
+		# get the number of repeats for the sample
+		repcount <- sum(rbcombi[seq,pos]>=1)
+
+		# get the seq info
+		if (repcount >= 1){
+
+			# add multiple seq lengths, based on reps
+			replength <- c(replength, replicate(repcount,nchar(
+				as.character(sequences[seq,"sequence"]))))
+
+			# add a single seq length per sample
+			singlelength <- c(singlelength, nchar(as.character(
+				sequences[seq,"sequence"])))
+
+		}
+
+	}
+
+
 	# calculate the mean and standard deviation for the
 	# proportion of technical filtered reads and add them
 	# to the samplestat table
@@ -698,6 +739,22 @@ for (us in csample){
 		fixed=TRUE)] <- mean(retain)
 	samplestat[samplepos,grep("prop_retained_sd",colnames(samplestat),
 		fixed=TRUE)] <- sd(retain)
+
+	# and the sequence length across all replicates
+	samplestat[samplepos,grep("avg_seq_length",
+		colnames(samplestat),fixed=TRUE)] <- mean(replength)
+	samplestat[samplepos,grep("sd_seq_length",
+		colnames(samplestat),fixed=TRUE)] <- sd(replength)
+
+	# and the sequence lenght per sample (no duplicates)
+	samplestat[samplepos,grep("avg_single_seq_length",
+		colnames(samplestat),fixed=TRUE)] <- mean(singlelength)
+	samplestat[samplepos,grep("sd_single_seq_length",
+		colnames(samplestat),fixed=TRUE)] <- sd(singlelength)
+
+	# and the number of unique barcodes in the sample
+	samplestat[samplepos,grep("single_seq_count",colnames(samplestat),
+		fixed=TRUE)] <- length(singlelength)
 
 }
 
