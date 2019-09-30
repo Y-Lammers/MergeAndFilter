@@ -703,8 +703,7 @@ for (us in csample){
 			singlelength <- c(singlelength, nchar(as.character(
 				sequences[seq,"sequence"])))
 
-		}
-
+		} 
 	}
 
 
