@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.4.1
+# Version: 1.5.1
 
 # set arguments
 obi1file=commandArgs(trailingOnly = TRUE)[1]
@@ -84,13 +84,12 @@ if (is.na(commandArgs(trailingOnly = TRUE)[12])) {
 #min_total_rep=3
 
 
-
 ############################
 # Read the obitools tables #
 ############################
 
+# Load the first OBITools table
 obi1 = read.table(obi1file,header=TRUE,sep="\t")
-obi2 = read.table(obi2file,header=TRUE,sep="\t")
 
 # rename the columns for the first obitools file
 colnames(obi1)[3] <- paste(obi1name,"_iden",sep="")
@@ -106,6 +105,19 @@ colnames(obi1)[(dim(obi1)[2]-6):(dim(obi1)[2]-1)] <- c(
 	paste(obi1name,"_species_name",sep=""),
 	paste(obi1name,"_taxid",sep=""))
 
+# order by ID
+obi1 <- obi1[order(obi1$id),]
+
+# get the information columns and the sequences
+obi1_info <- obi1[,c(1,3,5,7,9,(dim(obi1)[2]-6):(dim(obi1)[2]-1))]
+sequences <- obi1[,dim(obi1)[2],drop=FALSE]
+
+# clear the memory
+rm(obi1)
+
+# read the second obitools table
+obi2 = read.table(obi2file,header=TRUE,sep="\t")
+
 # rename the columns for the second obitools file
 colnames(obi2)[3] <- paste(obi2name,"_iden",sep="")
 colnames(obi2)[6:9] <- c(paste(obi2name,"_family",sep=""),
@@ -120,22 +132,21 @@ colnames(obi2)[(dim(obi2)[2]-6):(dim(obi2)[2]-1)] <- c(
 	paste(obi2name,"_species_name",sep=""),
 	paste(obi2name,"_taxid",sep=""))
 
-# sort both datasets by the ID
-obi1 <- obi1[order(obi1$id),]
+# sort the second dataset by the ID
 obi2 <- obi2[order(obi2$id),]
 
-# get the information columns
-obi1_info <- obi1[,c(1,3,5,7,9,(dim(obi1)[2]-6):(dim(obi1)[2]-1))]
+# get the info
 obi2_info <- obi2[,c(3,7,9,(dim(obi2)[2]-6):(dim(obi2)[2]-1))]
-sequences <- obi1[,dim(obi1)[2],drop=FALSE]
 
 # get the sample and obiclean info
-sample <- obi1[,which(grepl("sample.",colnames(obi1),fixed=TRUE))]
-clean <- obi1[,which(grepl("obiclean_status.",colnames(obi1),fixed=TRUE))]
+sample <- obi2[,which(grepl("sample.",colnames(obi2),fixed=TRUE))]
+clean <- obi2[,which(grepl("obiclean_status.",colnames(obi2),fixed=TRUE))]
 
 # combine the raw sample and obiclean data
 rcombi=cbind(sample,clean)
 
+# clear the memory
+rm(obi2)
 
 
 ###################################################
@@ -147,7 +158,7 @@ counts = read.table(count_table,header=TRUE,sep="\t")
 
 # reformat the sample names in the counts table so that they
 # match with the OBITools input
-counts[,1] <- gsub("[:-]",".",counts[,1])
+counts[,1] <- gsub("[():-]",".",counts[,1])
 
 # extract the sample names
 csample <- unique(gsub(".{1}$",'',counts[,1]))
@@ -302,22 +313,10 @@ for (s in 1:length(samples)){
 	obiclean <- grep(paste("^",sub("sample","obiclean_status",
 		colnames(tcombi)[samples[s]]),"$",sep=""), colnames(tcombi))
 
-	# for sequence in the sequence list
-	for (seq in 1:nrow(tcombi)){
+	# remove low sequence occurences and internal sequences
+	tcombi[which(tcombi[,samples[s]]<min_reads | 
+		tcombi[,obiclean]=="i"), samples[s]] <- 0
 
-		# if the read number is below the
-		# threshold, set it to zero
-		if(tcombi[seq,samples[s]]<min_reads){
-			tcombi[seq,samples[s]] <- 0
-		} else {
-			# if the read number is above the
-			# threshold, check if it is an internal
-			# sequence, if so, set it to zero
-			if(tcombi[seq,obiclean]=="i"){
-				tcombi[seq,samples[s]] <- 0
-			}
-		}
-	}
 }	
 	
 # recalculate the total count
@@ -334,7 +333,8 @@ for (seq in 1:nrow(tcombi)){
 
 # remove the low total read count sequences
 subset = which(obi1_info[,"count"]>=min_total_reads)
-tcombi=tcombi[subset,]
+rcombi=rcombi[subset,samples]
+tcombi=tcombi[subset,samples]
 obi1_info=obi1_info[subset,]
 obi2_info=obi2_info[subset,]
 sequences=sequences[subset,]
@@ -424,10 +424,9 @@ sequences=sequences[subset,,drop=FALSE]
 
 # get the samples from the final filtered combi table, i.e. remove the
 # obiclean information since this is no longer needed
-clean_sample <- rbcombi[,which(grepl("sample.",colnames(rbcombi),fixed=TRUE))]
 
 # get the final table
-finaltable=cbind(obi1_info,obi2_info,sequences,clean_sample)
+finaltable=cbind(obi1_info,obi2_info,sequences,rbcombi)
 
 # resort the final table based on the total read count
 finaltable <- finaltable[order(-finaltable[,"count"]),]
@@ -460,10 +459,8 @@ for (us in usamples){
 	# of reads for each repeat. If the number of repeats is 1, set the
 	# proportion to 1.
 	if (lpos > 1){
-		ssum <- colSums(scombi[,pos])
 		pprop <- colSums(scombi[,pos])/sum(scombi[,pos])
 	} else {
-		ssum <- sum(scombi[,pos])
 		pprop <- 1
 	}
 
@@ -477,34 +474,30 @@ for (us in usamples){
 	scombi[[paste("weightrep_",us,sep="")]] <- NA
 
 
-	# loop through the sequences in order to calculate
-	# the total sum, count and proportional repeats per sequence
-	for (seq in 1:nrow(scombi)){
+	# get the sample sums, replicates and the proportion of replicates
+	totsumv <- rowSums(scombi[,pos])
+	totrepv <- rowSums(scombi[,pos]>0)
+	proprepv <- totrepv/lpos
 
-		# get the total sum, count and prop count
-		totsum <- sum(scombi[seq,pos])
-		totrep <- sum(scombi[seq,pos]>0)
-		proprep <- totrep/lpos
+	# get the read proportions withing a sample
+	temp <- as.data.frame(lapply(scombi[,pos],function(x) prop.table(x)))
 
-		# calculate the proportion of reads assigned to a taxa
-		# per repeat. Use the proportion to work out the average
-		# and standard deviation for each sample.
-		if (length(scombi[seq,pos]) == 1){
-			avgpread <- scombi[seq,pos]/ssum
-			sdpread <- 0
-		} else {
-			avgpread <- rowMeans(scombi[seq,pos]/ssum,na.rm=TRUE)
-			sdpread <- sd(scombi[seq,pos]/ssum,na.rm=TRUE)
-		}
-
-		# add the values to the new columns
-		scombi[seq,paste("totread_",us,sep="")] <- totsum
-		scombi[seq,paste("avgpread_",us,sep="")] <- avgpread
-		scombi[seq,paste("sdpread_",us,sep="")] <- sdpread
-		scombi[seq,paste("totrep_",us,sep="")] <- totrep
-		scombi[seq,paste("proprep_",us,sep="")] <- proprep
-
+	# calculate the means and sd of the proportions, ignore one rep samples
+	if (lpos == 1){
+		avgpreadv <- temp
+		sdpreadv <- 0
+	} else {
+		avgpreadv <- rowMeans(temp,na.rm=TRUE)
+		sdpreadv <- apply(temp,1,sd,na.rm=TRUE)
 	}
+
+	# store the results
+	scombi[,paste("totread_",us,sep="")] <- totsumv
+	scombi[,paste("avgpread_",us,sep="")] <- avgpreadv
+	scombi[,paste("sdpread_",us,sep="")] <- sdpreadv
+	scombi[,paste("totrep_",us,sep="")] <- totrepv
+	scombi[,paste("proprep_",us,sep="")] <- proprepv
+
 
 	# calculate the mean number of repeats for the sample
 	# (ignoring 0 repeats) as well as the proportion of 
@@ -524,17 +517,11 @@ for (us in usamples){
 	# if proportion is lower, use the regular proportion.
 	if (rmean_rep >= 0.33){
 
-		# loop through the sequences again, this time calculating
-		# the weighted proportion of repeats if needed
-		for (seq in 1:nrow(scombi)){
+		# calculate the weighted proportion of repeats
+		wproprepv <- rowSums(t(t(scombi[,pos]>0)*pprop))
 
-			# recalc the proportion based on the number of
-			# reads in each repeat across the PCR replicates		
-			wproprep <- sum((scombi[seq,pos]>0)*pprop)
-
-			# add the weighted proportion to the dataframe
-			scombi[seq,paste("weightrep_",us,sep="")] <- wproprep						
-		}
+		# add the weighted proportion to the dataframe
+		scombi[,paste("weightrep_",us,sep="")] <- wproprepv
 
 	} else {
 
