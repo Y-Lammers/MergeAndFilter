@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.5.1
+# Version: 1.5.2
 
 # set arguments
 obi1file=commandArgs(trailingOnly = TRUE)[1]
@@ -474,21 +474,34 @@ for (us in usamples){
 	scombi[[paste("weightrep_",us,sep="")]] <- NA
 
 
-	# get the sample sums, replicates and the proportion of replicates
-	totsumv <- rowSums(scombi[,pos])
-	totrepv <- rowSums(scombi[,pos]>0)
-	proprepv <- totrepv/lpos
-
 	# get the read proportions withing a sample
 	temp <- as.data.frame(lapply(scombi[,pos],function(x) prop.table(x)))
 
-	# calculate the means and sd of the proportions, ignore one rep samples
+	# calculate the totals, means and sd of the proportions, 
+	# ignore one rep samples
 	if (lpos == 1){
+
+		# get the sample sums, reps are just straight copies
+		totsumv <- scombi[,pos]
+		totrepv <- scombi[,pos]
+		totrepv[which(totrepv>0)] <- 1
+		proprepv <- totrepv
+
+		# and the mean plus standard deviation		
 		avgpreadv <- temp
 		sdpreadv <- 0
+
 	} else {
+
+		# get the sample sums, replicates and the proportion of replicates
+		totsumv <- rowSums(scombi[,pos])
+		totrepv <- rowSums(scombi[,pos]>0)
+		proprepv <- totrepv/lpos
+
+		# and the mean plus standard deviation		
 		avgpreadv <- rowMeans(temp,na.rm=TRUE)
 		sdpreadv <- apply(temp,1,sd,na.rm=TRUE)
+
 	}
 
 	# store the results
