@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.5.2
+# Version: 1.5.3
 
 # set arguments
 obi1file=commandArgs(trailingOnly = TRUE)[1]
@@ -158,7 +158,7 @@ counts = read.table(count_table,header=TRUE,sep="\t")
 
 # reformat the sample names in the counts table so that they
 # match with the OBITools input
-counts[,1] <- gsub("[():+-]",".",counts[,1])
+counts[,1] <- gsub("[][():+-]",".",counts[,1])
 
 # extract the sample names
 csample <- unique(gsub(".{1}$",'',counts[,1]))
