@@ -158,7 +158,7 @@ counts = read.table(count_table,header=TRUE,sep="\t")
 
 # reformat the sample names in the counts table so that they
 # match with the OBITools input
-counts[,1] <- gsub("[():-]",".",counts[,1])
+counts[,1] <- gsub("[():+-]",".",counts[,1])
 
 # extract the sample names
 csample <- unique(gsub(".{1}$",'',counts[,1]))
