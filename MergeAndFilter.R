@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.5.4
+# Version: 1.5.5
 
 # set arguments
 obi1file=commandArgs(trailingOnly = TRUE)[1]
@@ -521,10 +521,11 @@ for (us in usamples){
 		
 	}
 
-	# if the proportion of repeats is higher than 0.33, 
+	# if the proportion of repeats is higher than 0.33 AND there are
+	# atleast 10 different barcodes in the sample:
 	# calculate the weighted proportion of repeats per sequence.
 	# if proportion is lower, use the regular proportion.
-	if (rmean_rep >= 0.33){
+	if ((rmean_rep >= 0.33) & (sum(rowSums(scombi[,pos]>0)>0)>=10)){
 
 		# calculate the weighted proportion of repeats
 		wproprepv <- rowSums(t(t(scombi[,pos]>0)*pprop))
@@ -570,6 +571,12 @@ write.table(finaltable, file=paste(output_name,"_summary.tsv",sep=""),
 # Calculate the proportion of reads removed #
 # and retained for the filtering steps      #
 #############################################
+
+# create a new data frame that will hold the raw sequence lengths
+lengthpile <- data.frame(matrix(NA,nrow=length(rownames(samplestat)),ncol=2))
+colnames(lengthpile) <- c("reps","single")
+rownames(lengthpile) <- rownames(samplestat)
+
 
 # loop through the samples based on the counts table
 for (us in csample){
@@ -702,6 +709,9 @@ for (us in csample){
 		} 
 	}
 
+	lengthpile[samplepos,"reps"] <- paste(replength,collapse=",")
+	lengthpile[samplepos,"single"] <- paste(singlelength,collapse=",")
+
 
 	# calculate the mean and standard deviation for the
 	# proportion of technical filtered reads and add them
@@ -752,6 +762,15 @@ for (us in csample){
 		fixed=TRUE)] <- length(singlelength)
 
 }
+
+# preparte the sequence length output
+lengthpile_mod <- lengthpile
+lengthpile_mod <- rbind(colnames(lengthpile_mod),lengthpile_mod)
+rownames(lengthpile_mod)[1] <- ''
+
+# write the sequence length table
+write.table(lengthpile_mod, file=paste(output_name,"_lengths.tsv",sep=""),
+        quote=FALSE, sep="\t", col.names=FALSE, row.names=TRUE)
 
 
 
