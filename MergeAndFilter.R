@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.5.3
+# Version: 1.5.4
 
 # set arguments
 obi1file=commandArgs(trailingOnly = TRUE)[1]
@@ -68,16 +68,14 @@ if (is.na(commandArgs(trailingOnly = TRUE)[12])) {
 # the R script manually         #
 #################################
 
-#obi1file="../Andoya/Metabarcoding/NewAndoya/AndoyaMerged.cl.arctborbryo-iden.ann.sort.tsv"
-#obi2file="../Andoya/Metabarcoding/NewAndoya/AndoyaMerged.cl.NCBI-iden.ann.sort.tsv"
-#count_table="../Andoya/Metabarcoding/NewAndoya/AndoyaMerged.counts.tsv"
-#output_name="../Andoya/Metabarcoding/NewAndoya/AndoyaCombined"
-#obi1file="ECOGEN-ECOG-1/ECOG-1-2_tag.ali.frm.uniq.index_swap.c2.cl.arctborbryo-iden.ann.sort.tsv"
-#obi2file="ECOGEN-ECOG-1/ECOG-1-2_tag.ali.frm.uniq.index_swap.c2.cl.NCBI-iden.ann.sort.tsv"
-#synthetic_blacklist_name="/home/youri/Projects/ECOGEN/MergeAndFilter/synthetic_blacklist.tsv"
-#region_blacklist_name="MergeAndFilter/N-Norway_blacklist.tsv"
-#obi1name="arctborbryo"
-#obi2name="ncbi"
+#obi1file="path to the first obitools file"
+#obi2file="path to the second obitools file"
+#count_table="path to the sample counts table"
+#output_name="base output name"
+#synthetic_blacklist_name="path to the synthetic blacklist"
+#region_blacklist_name="path to the regional blacklist"
+#obi1name="dataset 1"
+#obi2name="dataset 2"
 #min_iden=1
 #min_reads=3
 #min_total_reads=10
@@ -341,9 +339,7 @@ sequences=sequences[subset,]
 
 # count the total number of repeats
 obi1_info$total_rep <- NA
-for (seq in 1:nrow(tcombi)){
-	obi1_info[seq,"total_rep"] <- sum(tcombi[seq,samples]>0)
-}
+obi1_info[,"total_rep"] <- rowSums(tcombi[,samples]>0)
 
 # remove the low total repeat sequences
 subset = which(obi1_info[,"total_rep"]>=min_total_rep)
@@ -488,8 +484,8 @@ for (us in usamples){
 		proprepv <- totrepv
 
 		# and the mean plus standard deviation		
-		avgpreadv <- temp
-		sdpreadv <- 0
+		avgpreadv <- as.double(temp)
+		sdpreadv <- replicate(length(avgpreadv), 0)
 
 	} else {
 
@@ -782,19 +778,20 @@ for (us in usamples){
 		rsubset <- rcombi[,c(pos,(dim(rcombi)[2]-1))]
 		fsubset <- rbcombi[,c(pos,(dim(rbcombi)[2]-1))]
 
-		rsubset <- rsubset[order(rsubset[,1], decreasing=TRUE),]
-		fsubset <- fsubset[order(fsubset[,1], decreasing=TRUE),]
+		# sort and select the top 10
+		rsubset <- rsubset[order(rsubset[,1], decreasing=TRUE),][1:10,]
+		fsubset <- fsubset[order(fsubset[,1], decreasing=TRUE),][1:10,]
+
+		# remove NAs
+		rsubset[is.na(rsubset)] <- 0
+		fsubset[is.na(fsubset)] <- 0
 
 		# calculate the average repeats for the
 		# top 10 most abundant sequences
-		ravgreps <- mean(rsubset[1:10,1]>0)
-		rsdreps <- sd(rsubset[1:10,1]>0)
-		favgreps <- mean(fsubset[1:10,1]>0)
-		fsdreps <- sd(fsubset[1:10,1]>0)
-
-		# calculate the overlap between the two sets
-		overlap <- length(intersect(rownames(rsubset[1:10,]),
-		rownames(fsubset[1:10,])))
+		ravgreps <- mean(rsubset[,1]>0)
+		rsdreps <- sd(rsubset[,1]>0)
+		favgreps <- mean(fsubset[,1]>0)
+		fsdreps <- sd(fsubset[,1]>0)
 
 
 	} else {
@@ -803,21 +800,27 @@ for (us in usamples){
 		rsubset <- rcombi[,pos]
 		fsubset <- rbcombi[,pos]
 
-		rsubset <- rsubset[order(rowSums(-rsubset)),]
-		fsubset <- fsubset[order(rowSums(-fsubset)),]
+		# sort and select the top 10
+		rsubset <- rsubset[order(rowSums(-rsubset)),][1:10,]
+		fsubset <- fsubset[order(rowSums(-fsubset)),][1:10,]
+	
+		# remove NAs
+		rsubset[is.na(rsubset)] <- 0
+		fsubset[is.na(fsubset)] <- 0
 
 		# calculate the average repeats for the
 		# top 10 most abundant sequences
-		ravgreps <- mean(rowSums(rsubset[1:10,]>0))/lpos
-		rsdreps <- sd(rowSums(rsubset[1:10,]>0)/lpos)
-		favgreps <- mean(rowSums(fsubset[1:10,]>0))/lpos
-		fsdreps <- sd(rowSums(fsubset[1:10,]>0)/lpos)
-
-		# calculate the overlap between the two sets
-		overlap <- length(intersect(rownames(rsubset[1:10,]),
-		rownames(fsubset[1:10,])))
+		ravgreps <- mean(rowSums(rsubset>0))/lpos
+		rsdreps <- sd(rowSums(rsubset>0)/lpos)
+		favgreps <- mean(rowSums(fsubset>0))/lpos
+		fsdreps <- sd(rowSums(fsubset>0)/lpos)
 
 	}
+
+
+	# calculate the overlap between the two sets
+	overlap <- length(intersect(rownames(rsubset)[!grepl("NA",
+	rownames(rsubset))],rownames(fsubset)[!grepl("NA",rownames(fsubset))]))
 
 	# clean the sample name so it matches the samplestat names
 	cus <- sub("sample.","^",us)
