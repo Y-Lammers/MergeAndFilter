@@ -487,6 +487,9 @@ for (us in usamples){
 		avgpreadv <- as.double(temp)
 		sdpreadv <- replicate(length(avgpreadv), 0)
 
+		# get the number of barcodes
+		barcodecount <- sum(scombi[,pos]>0)
+
 	} else {
 
 		# get the sample sums, replicates and the proportion of replicates
@@ -497,6 +500,9 @@ for (us in usamples){
 		# and the mean plus standard deviation		
 		avgpreadv <- rowMeans(temp,na.rm=TRUE)
 		sdpreadv <- apply(temp,1,sd,na.rm=TRUE)
+
+		# get the number of barcodes
+		barcodecount <- sum(rowSums(scombi[,pos]>0)>0)
 
 	}
 
@@ -525,7 +531,7 @@ for (us in usamples){
 	# atleast 10 different barcodes in the sample:
 	# calculate the weighted proportion of repeats per sequence.
 	# if proportion is lower, use the regular proportion.
-	if ((rmean_rep >= 0.33) & (sum(rowSums(scombi[,pos]>0)>0)>=10)){
+	if ((rmean_rep >= 0.33) & (barcodecount>=10)){
 
 		# calculate the weighted proportion of repeats
 		wproprepv <- rowSums(t(t(scombi[,pos]>0)*pprop))
