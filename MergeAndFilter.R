@@ -162,12 +162,7 @@ counts[,1] <- gsub("[][():+-]",".",counts[,1])
 csample <- unique(gsub(".{1}$",'',counts[,1]))
 
 # get the maximum number of repeats in the library
-repeats <- c()
-for (sample in csample){
-	rep <- length(grep(paste("^",sample,sep=""),counts[,1]))
-	repeats <- c(repeats,rep)
-}
-repeats <- max(repeats)
+repeats <- max(as.numeric(gsub("^.*rpt","",counts[,1])))
 
 # create an empty dataframe for the sample stat information
 samplestat <- data.frame(matrix(NA,nrow=length(csample),
