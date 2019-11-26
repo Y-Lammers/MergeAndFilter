@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.5.6
+# Version: 1.5.7
 
 # set arguments
 obi1file=commandArgs(trailingOnly = TRUE)[1]
@@ -162,7 +162,7 @@ counts[,1] <- gsub("[][():+-]",".",counts[,1])
 csample <- unique(gsub(".{1}$",'',counts[,1]))
 
 # get the maximum number of repeats in the library
-repeats <- max(as.numeric(gsub("(^.*)([0-9]$)","\\2",counts[,1])))
+repeats <- max(as.numeric(gsub("(^.*)([0-9]$)","\\2",counts[,1])),na.rm=TRUE)
 
 # create an empty dataframe for the sample stat information
 samplestat <- data.frame(matrix(NA,nrow=length(csample),
