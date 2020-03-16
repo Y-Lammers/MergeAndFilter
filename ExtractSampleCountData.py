@@ -3,24 +3,40 @@
 # This tool will go through an OBITools fasta file and extract the
 # number of sequences for each sample and output these in a table.
 
-# Usage: ExtractSampleCountData.py [input file] > [output table]
+# Usage: ExtractSampleCountData.py [input file] [sample list] 
+# [sample location] > [output table]
 
 # Contact: youri.lammers@gmail.com
-# version: 1.1.1 
+# version: 1.1.2 
 
 # load a bunch of modules
 import sys, json, os, itertools
 from collections import defaultdict
 
+def read_samplefile():
 
-def read_fasta():
+	# Create an empty dictionary for sample sequence info
+	sampleDict = defaultdict(int)
+	
+	# parse through the sample file
+	for line in open(sys.argv[2]):
+
+		# split the line and skip if it is the header
+		line = line.split('\t').strip()
+		if line[0][0] == "#": continue
+
+		# set the repeat / sample to 0
+		sampleDict[line[int(args.sys[3])]] = 0
+
+	# return the dictionary
+	return sampleDict
+
+
+def read_fasta(sampleDict):
 
 	# Parse through a fasta file and extract the sample
 	# and sequence count information and store these in
 	# a dictionay
-
-	# Create an empty dictionary for sample sequence info
-	sampleDict = defaultdict(int)
 
 	# open the sequence library
 	seq_file = open(sys.argv[1])
@@ -74,5 +90,5 @@ def output_sample_data(sampleDict):
 		print "{0}\t{1}".format(sample, sampleDict[sample])
 
 
-sampleDict = read_fasta()
+sampleDict = read_fasta(read_samplefile())
 output_sample_data(sampleDict)
