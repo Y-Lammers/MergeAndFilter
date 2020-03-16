@@ -82,6 +82,7 @@ if (is.na(commandArgs(trailingOnly = TRUE)[12])) {
 #min_total_rep=3
 
 
+
 ############################
 # Read the obitools tables #
 ############################
@@ -199,6 +200,32 @@ tcolnames <- c(tcolnames,'single_seq_count')
 
 # add the column names
 colnames(samplestat) <- tcolnames
+
+
+
+#########################################
+# Add blank columns for missing repeats #
+#########################################
+
+# for sample in the count file
+for (sample in counts[,1]){
+
+	# get the column position
+	pos <- grep(paste("^sample.",sample,sep=""),colnames(rcombi))
+
+	# if the position does not exist, add the sample and obiclean sample
+	# to the raw combined dataframe
+	if(length(pos) == 0){
+
+		rcombi[,paste("sample.",sample,sep="")] <- 0
+		rcombi[,paste("obiclean_status.",sample,
+			sep="")] <- as.factor(NA)
+
+	}
+}
+
+#sort the new dataframe, so the the columns are grouped together
+rcombi <- rcombi[,order(names(rcombi))]
 
 
 
@@ -334,7 +361,7 @@ sequences=sequences[subset,]
 
 # count the total number of repeats
 obi1_info$total_rep <- NA
-obi1_info[,"total_rep"] <- rowSums(tcombi[,samples]>0)
+obi1_info[,"total_rep"] <- rowSums(tcombi>0)
 
 # remove the low total repeat sequences
 subset = which(obi1_info[,"total_rep"]>=min_total_rep)
@@ -342,7 +369,6 @@ tcombi=tcombi[subset,]
 obi1_info=obi1_info[subset,]
 obi2_info=obi2_info[subset,]
 sequences=sequences[subset,]
-
 
 
 ##################################
@@ -437,7 +463,7 @@ scombi <- rbcombi
 
 # get the unique sample names (by removing the last character
 # from the sample name, which is presumed to the repeat number.)
-usamples <- unique(gsub(".{1}$",'',colnames(scombi[samples])))
+usamples <- unique(gsub(".{1}$",'',colnames(scombi)))
 
 # loop through the samples
 for (us in usamples){
@@ -465,8 +491,12 @@ for (us in usamples){
 	scombi[[paste("weightrep_",us,sep="")]] <- NA
 
 
-	# get the read proportions withing a sample
+	# get the read proportions within a sample
 	temp <- as.data.frame(lapply(scombi[,pos],function(x) prop.table(x)))
+	
+	# replace empty NaN columns with zeros, so the that the average
+	# calculation doesn't break
+	temp[is.na(temp)] <- 0
 
 	# calculate the totals, means and sd of the proportions, 
 	# ignore one rep samples
@@ -612,7 +642,8 @@ for (us in csample){
 		# output, if yes, compute the proportions, if not
 		# all data is filtered during OBITools itself and the
 		# proportions default to a 100% removed.
-		if (repname %in% colnames(rcombi)) {
+		if ((repname %in% colnames(rcombi)) & 
+			(samplestat[samplepos,repnum]>0)) {
 
 			# get the repeat location in the rcombi table
 			repc <- grep(repname,colnames(rcombi))
