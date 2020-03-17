@@ -21,7 +21,7 @@ def read_samplefile():
 	for line in open(sys.argv[2]):
 
 		# split the line and skip if it is the header
-		line = line.split('\t').strip()
+		line = line.strip().split('\t')
 		if line[0][0] == "#": continue
 
 		# set the repeat / sample to 0
