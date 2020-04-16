@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 1.5.7
+# Version: 1.6.2
 
 # set arguments
 obi1file=commandArgs(trailingOnly = TRUE)[1]
@@ -238,10 +238,10 @@ rcombi <- rcombi[,order(names(rcombi))]
 for (sample in csample){
 
 	# get the rows with data
-	pos <- grep(paste("^",sample,sep=""),counts$Sample.name)
+	pos <- grep(paste("^",sample,"[0-9]$",sep=""),counts$Sample.name)
 
 	# get the row for the sample in the samplestat table
-	samplepos <- grep(paste("^",sample,sep=""),rownames(samplestat))
+	samplepos <- grep(paste("^",sample,"$",sep=""),rownames(samplestat))
 
 	# get the total raw read count for the sample
 	totraw <- sum(counts$Read.count[pos])
@@ -469,7 +469,7 @@ usamples <- unique(gsub(".{1}$",'',colnames(scombi)))
 for (us in usamples){
 
 	# get the relevant columns and column count
-	pos <- grep(paste("^",us,sep=""),colnames(scombi))
+	pos <- grep(paste("^",us,"[0-9]$",sep=""),colnames(scombi))
 	lpos <- length(pos)
 
 	# Calculate the sum of reads for each repeat, as well as the proportion
@@ -616,7 +616,7 @@ for (us in csample){
 	samplepos <- grep(paste("^",us,"$",sep=""),rownames(samplestat))
 
 	# get the sample names
-	repnames <- counts[grep(paste("^",us,sep=""),counts[,1]),1]
+	repnames <- counts[grep(paste("^",us,"[0-9]$",sep=""),counts[,1]),1]
 
 	# create empty vectors for storing the proportional data
 	# in order to calculate the mean and standard deviation
@@ -714,7 +714,7 @@ for (us in csample){
 
 	
 	# get the relevant columns
-	pos <- grep(paste("^sample.",us,sep=""),colnames(rbcombi))
+	pos <- grep(paste("^sample.",us,"[0-9]$",sep=""),colnames(rbcombi))
 
 	# create the vectors for the sequence length information
 	replength <- c()
@@ -815,7 +815,7 @@ write.table(lengthpile_mod, file=paste(output_name,"_lengths.tsv",sep=""),
 for (us in usamples){
 
 	# get the relevant columns and column count
-	pos <- grep(us,colnames(rcombi),fixed=TRUE)
+	pos <- grep(paste(us,"[0-9]$",sep=""),colnames(rcombi))
 	lpos <- length(pos)
 
 	# sort the subset columns based on the readcount
