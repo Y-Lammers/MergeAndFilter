@@ -6,7 +6,7 @@
 # Usage: ExtractSampleCountData.py [input file] [sample list] > [output table]
 
 # Contact: youri.lammers@gmail.com
-# version: 1.1.3
+# version: 1.1.4
 
 # load a bunch of modules
 import sys, json, os, itertools
@@ -49,13 +49,14 @@ def read_fasta(sampleDict):
 
 		# get the fasta header and parse out the
 		# sample name and count information
-		header = header.next().strip()
+		header = next(header).strip()
 		descrip = header.split("merged_sample=")[1]
 		descrip = descrip.split(";")[0]
 		samples = json.loads(descrip.replace("\'","\""))
 
 		# get the fasta sequence
-		sequence = ''.join(seq_line.strip() for seq_line in seq_groups.next())
+		sequence = ''.join(seq_line.strip() for 
+			seq_line in next(seq_groups))
 
 		# try to add the sample information for the
 		# sequence to the sequence dictionary
@@ -77,16 +78,16 @@ def output_sample_data(sampleDict):
 	# This function will format and output the sample data
 
 	# print the table header
-	print "Sample name\tRead count"
+	print("Sample name\tRead count")
 
 	# get a list of the dictionary keys and sort it
-	samples = sampleDict.keys()
+	samples = list(sampleDict.keys())
 	samples.sort() 
 
 	# Parse through the dictionary in an alphabetic order and 
 	# output the sample and read counts
 	for sample in samples:
-		print "{0}\t{1}".format(sample, sampleDict[sample])
+		print("{0}\t{1}".format(sample, sampleDict[sample]))
 
 
 sampleDict = read_fasta(read_samplefile())

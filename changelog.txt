@@ -1,0 +1,33 @@
+version 2.0 - 2020-05-15
+
+Major overhaul of the MergeAndFilter.R script.
+
+- Can now parse between 1 and many input OBITools tables rather than the
+  previously required 2 files. This will make it more flexible when working with
+  multiple reference databases.
+- It will now correctly identify repeats exceeding 1 digit. The code will
+  correctly identify multi digit repeat as long as the sample names are
+  properly formatted.
+- Only the repeats that are present in the data will show up in the samplestat
+  output table. Meaning that one can mix sample with low and high repeat counts
+  for example: 1-4 and 20-24, without repeats 5-19 taking up space in the
+  samplestat output file.
+- The code is now more flexible with the input OBITools tables. The column
+  positions containing the annotation information are now longer hardcoded, but
+  instead it will use grep to locate them. This will make the code more usable
+  for OBITools output that is sorted differently or contains additional columns.
+- General cleanup of the code, with both removal of redundant code and
+  shortening of more convoluted code.
+
+The ExtractSampleCountData.py script now works correctly on python3.
+
+Inclusion of a README describing both scripts in terms of input files, how to
+run the code, output files and output formats.
+
+Todo:
+
+- Make it easier to ignore the blacklist filtering, rather than providing a
+  file with dummy sequences.
+- Include and describe other parts of the metabarcoding pipeline.
+
+
