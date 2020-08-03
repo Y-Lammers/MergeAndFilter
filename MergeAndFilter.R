@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 2.0.0
+# Version: 2.0.1
 
 # set arguments
 
@@ -176,7 +176,7 @@ counts = read.table(count_table,header=TRUE,sep="\t")
 
 # reformat the sample names in the counts table so that they
 # match with the OBITools input
-counts[,1] <- make.names(counts[,1])
+counts[,1] <- gsub("[][():+-]",".",counts[,1])
 
 # extract the sample names
 csample <- unique(sub("(.*[^0-9])([0-9]+$)","\\1",counts[,1]))
