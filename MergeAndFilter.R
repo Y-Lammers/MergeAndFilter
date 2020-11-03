@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 2.0.1
+# Version: 2.0.2
 
 # set arguments
 
@@ -772,6 +772,7 @@ for (us in usamples) {
 
 	# get the relevant columns and column count
 	pos <- grep(paste(us,"[0-9]+$",sep=""),colnames(rcombi))
+	lpos <- length(pos)
 
 	# create two subsets for the raw and filtered data
 	rsubset <- rcombi[,pos,drop=FALSE]
