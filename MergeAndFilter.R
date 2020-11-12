@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 2.0.2
+# Version: 2.1.1
 
 # set arguments
 
@@ -95,7 +95,8 @@ rename <- c("best_identity.*","family","family_name","genus","genus_name",
 	"rank","scientific_name","taxid","species_list.*")
 
 # list of columns and order for the id, count and replicate information
-first_set <- c("id","count","total_rep")
+first_set <- c("id","pre_read","pre_rep","post_read","post_rep",
+		"read_ratio","rep_ratio")
 
 # loop through the number of files provided
 for (i in 1:datasets) { 
@@ -135,8 +136,16 @@ for (i in 1:datasets) {
 
 	} else {
 
-		# add a blank column for the total replicate info
-		obi$total_rep <- NA
+		# add blank columns for the replicate info, copy the count info
+		# and add a blank column for the post filter count data
+		#obi$pre_rep <- NA
+		#obi$post_rep <- NA
+		obi$pre_read <- obi$count
+		#obi$post_count <- NA
+		#obi$rep_ratio <- NA
+		#obi$count_ratio <- NA
+		obi[,c("pre_rep","post_read","post_rep","read_ratio",
+			"rep_ratio")] <- NA
 
 		# if its the first obitools dataset, get both the count info
 		# identification info and the sequences
@@ -348,7 +357,7 @@ for (s in 1:length(samples)) {
 	
 # recalculate the total count
 for (seq in 1:nrow(tcombi)) {
-	obi_info[seq,"count"] <- sum(tcombi[seq,samples])
+	obi_info[seq,"post_read"] <- sum(tcombi[seq,samples])
 }
 
 
@@ -359,21 +368,25 @@ for (seq in 1:nrow(tcombi)) {
 ################################################
 
 # remove the low total read count sequences
-subset = which(obi_info[,"count"]>=min_total_reads)
+subset = which(obi_info[,"post_read"]>=min_total_reads)
 rcombi=rcombi[subset,samples]
 tcombi=tcombi[subset,samples]
 obi_info=obi_info[subset,]
 sequences=sequences[subset,]
 
 # count the total number of repeats
-obi_info[,"total_rep"] <- rowSums(tcombi>0)
+obi_info[,"post_rep"] <- rowSums(tcombi>0)
+obi_info[,"pre_rep"] <- rowSums(rcombi>0)
+
+# calculate the pre-post filtering ratios
+obi_info[,"read_ratio"] <- obi_info$post_read / obi_info$pre_read
+obi_info[,"rep_ratio"] <- obi_info$post_rep / obi_info$pre_rep
 
 # remove the low total repeat sequences
-subset = which(obi_info[,"total_rep"]>=min_total_rep)
+subset = which(obi_info[,"post_rep"]>=min_total_rep)
 tcombi=tcombi[subset,]
 obi_info=obi_info[subset,]
 sequences=sequences[subset,]
-
 
 
 ##################################
@@ -445,7 +458,7 @@ sequences=sequences[subset,,drop=FALSE]
 finaltable=cbind(obi_info,sequences,rbcombi)
 
 # resort the final table based on the total read count
-finaltable <- finaltable[order(-finaltable[,"count"]),]
+finaltable <- finaltable[order(-finaltable[,"post_read"]),]
 
 write.table(finaltable, file=paste(output_name,"_filtered.tsv",sep=""),
 	quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
@@ -547,7 +560,7 @@ summary <- scombi[,pos]
 finaltable=cbind(obi_info,sequences,summary)
 
 # re-sort the final table based on the total read count
-finaltable <- finaltable[order(-finaltable[,"count"]),]
+finaltable <- finaltable[order(-finaltable[,"post_read"]),]
 
 # write the table
 write.table(finaltable, file=paste(output_name,"_summary.tsv",sep=""),
