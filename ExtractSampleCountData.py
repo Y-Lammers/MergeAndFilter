@@ -16,7 +16,7 @@ def read_samplefile():
 
 	# Create an empty dictionary for sample sequence info
 	sampleDict = defaultdict(int)
-	
+
 	# parse through the sample file
 	for line in open(sys.argv[2]):
 
@@ -43,7 +43,7 @@ def read_fasta(sampleDict):
 	# parse through the fasta file and obtain the sequences
 	seq_groups = (x[1] for x in itertools.groupby(seq_file,
 			key=lambda line: line[0] == '>'))
-	
+
 	# for each header in the sequence data
 	for header in seq_groups:
 
@@ -55,7 +55,7 @@ def read_fasta(sampleDict):
 		samples = json.loads(descrip.replace("\'","\""))
 
 		# get the fasta sequence
-		sequence = ''.join(seq_line.strip() for 
+		sequence = ''.join(seq_line.strip() for
 			seq_line in next(seq_groups))
 
 		# try to add the sample information for the
@@ -82,9 +82,9 @@ def output_sample_data(sampleDict):
 
 	# get a list of the dictionary keys and sort it
 	samples = list(sampleDict.keys())
-	samples.sort() 
+	samples.sort()
 
-	# Parse through the dictionary in an alphabetic order and 
+	# Parse through the dictionary in an alphabetic order and
 	# output the sample and read counts
 	for sample in samples:
 		print("{0}\t{1}".format(sample, sampleDict[sample]))
