@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 2.1.2
+# Version: 2.1.3
 
 # set arguments
 
@@ -102,7 +102,7 @@ first_set <- c("id","pre_read","pre_rep","post_read","post_rep",
 for (i in 1:datasets) { 
 
 	# Load the OBITools table
-	obi = read.table(obifiles[((i-1)*2)+1],header=TRUE,sep="\t",quote="")
+	obi = read.table(obifiles[((i-1)*2)+1],header=TRUE,sep="\t",quote="",comment.char="")
 
 	# get the table name and clean it for odd characters
 	name = make.names(obifiles[((i-1)*2)+2])
