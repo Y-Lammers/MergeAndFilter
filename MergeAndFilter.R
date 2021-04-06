@@ -15,7 +15,7 @@
 # are required. The remaining settings will default to the values below.
 
 # Contact: youri.lammers@gmail.com
-# Version: 2.1.3
+# Version: 2.1.4
 
 # set arguments
 
@@ -138,12 +138,7 @@ for (i in 1:datasets) {
 
 		# add blank columns for the replicate info, copy the count info
 		# and add a blank column for the post filter count data
-		#obi$pre_rep <- NA
-		#obi$post_rep <- NA
 		obi$pre_read <- obi$count
-		#obi$post_count <- NA
-		#obi$rep_ratio <- NA
-		#obi$count_ratio <- NA
 		obi[,c("pre_rep","post_read","post_rep","read_ratio",
 			"rep_ratio")] <- NA
 
@@ -807,6 +802,10 @@ for (us in usamples) {
 	rsdreps <- sd(rowSums(rsubset>0)/lpos)
 	favgreps <- mean(rowSums(fsubset>0))/lpos
 	fsdreps <- sd(rowSums(fsubset>0)/lpos)
+
+	# Remove the rows without reads to avoid excidental overlap
+	rsubset <- rsubset[which(rowSums(rsubset)>0),,drop=FALSE]
+	fsubset <- fsubset[which(rowSums(fsubset)>0),,drop=FALSE]
 
 	# calculate the overlap between the two sets
 	overlap <- length(intersect(rownames(rsubset)[!grepl("NA",
